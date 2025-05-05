@@ -1017,6 +1017,17 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
         xSemaphoreGive( pCtx->socketMutex );
     }
 
+    if( ret == ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO )
+    {
+        /* 
+         * Socket read error detected.
+         * This typically indicates the remote peer closed the connection.
+         * Action required: Close the local socket to properly terminate the connection.
+         */
+        ( void ) Ice_CloseCandidate( &pCtx->iceContext, pSocketContext->pLocalCandidate );
+        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+    }
+
     return ret;
 }
 

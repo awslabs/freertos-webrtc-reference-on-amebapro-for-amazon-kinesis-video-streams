@@ -250,7 +250,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                             void * pOnIceEventCallbackCustomContext )
 {
     uint8_t skipProcess = 0;
-    int32_t readBytes;
+    int32_t readBytes = 0;
     IceEndpoint_t remoteIceEndpoint;
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     int32_t retPeerToPeerConnectionFound;
@@ -289,6 +289,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
         if( readBytes < 0 )
         {
             LogError( ( "Fail to receive packets from socket ID: %d, errno: %s", pSocketContext->socketFd, strerror( errno ) ) );
+            skipProcess = 1;
             break;
         }
         else if( readBytes == 0 )
@@ -439,6 +440,17 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                            pProcessingBuffer[ 0 ] ) );
             }
         }
+    }
+
+    if( readBytes < 0 )
+    {
+        /* 
+         * Socket read error detected (readBytes < 0).
+         * This typically indicates the remote peer closed the connection.
+         * Action required: Close the local socket to properly terminate the connection.
+         */
+        ( void ) Ice_CloseCandidate( &pCtx->iceContext, pSocketContext->pLocalCandidate );
+        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
     }
 }
 
