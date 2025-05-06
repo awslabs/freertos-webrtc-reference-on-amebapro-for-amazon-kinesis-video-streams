@@ -36,6 +36,7 @@ file(
   "${REPO_ROOT_DIRECTORY}/examples/metric/*.c" )
 
 set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
+     "${REPO_ROOT_DIRECTORY}/examples/demo_config/"
      "${REPO_ROOT_DIRECTORY}/examples/master/"
      "${REPO_ROOT_DIRECTORY}/examples/peer_connection/"
      "${REPO_ROOT_DIRECTORY}/examples/peer_connection/peer_connection_codec_helper/"
@@ -166,7 +167,7 @@ if(BUILD_USRSCTP_LIBRARY)
           ENABLE_SCTP_DATA_CHANNEL=1
      )
 
-     list( 
+     list(
           APPEND webrtc_master_demo_include
           ${DCEP_INCLUDE_PUBLIC_DIRS}
      )

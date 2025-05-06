@@ -1,5 +1,5 @@
 writev
-examples/master/demo_config.h
+examples/demo_config/demo_config.h
 .vscode
 project/realtek_amebapro2_webrtc_application/GCC-RELEASE/build/
 project/realtek_amebapro2_webrtc_application/GCC-RELEASE/mp/

@@ -393,7 +393,8 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
                                                                     &remoteCandidateInfo );
             if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
             {
-                LogError( ( "Fail to add remote candidate." ) );
+                /* Skip unsupported candidate types (e.g. IPv6 or TCP candidates) - this is expected behavior. */
+                LogDebug( ( "Fail to add remote candidate, result: %d.", iceControllerResult ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_ICE_CONTROLLER_ADD_REMOTE_CANDIDATE;
             }
         }

@@ -7,8 +7,8 @@
 Execute the following commands to clone this repository along with all the
 submodules-
 ```sh
-git clone https://github.com/ActoryOu/FreeRTOS-WebRTC.git
-cd FreeRTOS-WebRTC
+git clone https://github.com/awslabs/freertos-webrtc-reference-on-amebapro-for-amazon-kinesis-video-streams.git
+cd freertos-webrtc-reference-on-amebapro-for-amazon-kinesis-video-streams
 git submodule update --init --recursive
 ```
 
@@ -108,14 +108,18 @@ A `formatted_certificate_and_ket.txt` file will be generated inside the `example
       .\uartfwburn.exe -p COMxx -f flash_ntz.bin -b 2000000 -U
       ```
       Replace COMxx with the actual COM port that you can find in the Device Manager.
-   * Mac: 
+   * Mac:
       ```sh
-      chmod +x uartfwburn.arm.darwin 
+      chmod +x uartfwburn.arm.darwin
       sudo ./uartfwburn.arm.darwin -p /dev/cu.usbserial-**** -f ./flash_ntz.bin -b 2000000 -U
       ```
-      Replace /dev/cu.usbserial-**** with the actual COM port that you can find by running: 
+      Replace /dev/cu.usbserial-**** with the actual COM port that you can find by running:
       ```sh
       ls /dev/cu.*
+      ```
+   * Linux:
+      ```sh
+      uartfwburn.linux -f flash_ntz.bin -p /dev/ttyUSB* -b 2000000 -U
       ```
 
 ## Run
@@ -161,7 +165,7 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
 
 ## JoinStorageSession support
 
-JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities. 
+JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
 In our implementation (Master participant only):
 1. First connect to Kinesis Video Streams with WebRTC Signaling.
