@@ -78,7 +78,7 @@ static void OnTimerExpire( void * pContext )
                                                        NULL );
                 if( result != 0 )
                 {
-                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %d.", result ) );
+                    LogDebug( ( "Failed to process ICE periodic connection check event, result: %d.", result ) );
                     IceController_UpdateTimerInterval( pCtx,
                                                        ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
                 }
