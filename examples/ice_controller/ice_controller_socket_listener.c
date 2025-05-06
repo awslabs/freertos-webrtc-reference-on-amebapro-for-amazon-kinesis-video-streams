@@ -270,6 +270,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
     while( !skipProcess )
     {
+        memset( &remoteIceEndpoint, 0, sizeof( IceEndpoint_t ) );
         if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_UDP )
         {
             readBytes = RecvPacketUdp( pSocketContext, pProcessingBuffer, RX_BUFFER_SIZE, 0, &remoteIceEndpoint );

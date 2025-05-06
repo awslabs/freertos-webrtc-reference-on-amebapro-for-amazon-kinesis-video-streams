@@ -50,6 +50,7 @@ static void GetLocalIPAdresses( IceEndpoint_t * pLocalIceEndpoints,
     if( localEndpointsSize >= 1 )
     {
         pIpv4Address = LwIP_GetIP( 0 );
+        memset( &pLocalIceEndpoints[ 0 ], 0, sizeof( IceEndpoint_t ) );
         pLocalIceEndpoints[ 0 ].transportAddress.family = STUN_ADDRESS_IPv4;
         pLocalIceEndpoints[ 0 ].transportAddress.port = 0;
         memcpy( pLocalIceEndpoints[ 0 ].transportAddress.address, pIpv4Address, STUN_IPV4_ADDRESS_SIZE );

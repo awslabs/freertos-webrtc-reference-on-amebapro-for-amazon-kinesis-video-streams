@@ -367,6 +367,7 @@ static PeerConnectionResult_t HandleAddRemoteCandidateRequest( PeerConnectionSes
     {
         if( pSession->state == PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION )
         {
+            memset( &remoteCandidateInfo, 0, sizeof( IceRemoteCandidateInfo_t ) );
             remoteCandidateInfo.candidateType = pRemoteCandidate->candidateType;
             remoteCandidateInfo.pEndpoint = &( pRemoteCandidate->iceEndpoint );
             remoteCandidateInfo.priority = pRemoteCandidate->priority;
@@ -1947,6 +1948,7 @@ PeerConnectionResult_t PeerConnection_AddRemoteCandidate( PeerConnectionSession_
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        memset( &candidate, 0, sizeof( IceControllerCandidate_t ) );
         iceControllerResult = IceController_DeserializeIceCandidate( pDecodeMessage,
                                                                      decodeMessageLength,
                                                                      &candidate );
