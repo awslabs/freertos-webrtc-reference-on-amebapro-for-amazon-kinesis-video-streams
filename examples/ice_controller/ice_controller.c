@@ -55,30 +55,55 @@ static const uint32_t gCrc32Table[256] = {
 static void OnTimerExpire( void * pContext )
 {
     IceControllerContext_t * pCtx = ( IceControllerContext_t * ) pContext;
+    int32_t result = 0;
 
     if( pCtx->onIceEventCallbackFunc )
     {
         switch( pCtx->state )
         {
             case ICE_CONTROLLER_STATE_PROCESS_CANDIDATES_AND_PAIRS:
-                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS,
-                                              NULL );
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                       ICE_CONTROLLER_CB_EVENT_PROCESS_ICE_CANDIDATES_AND_PAIRS,
+                                                       NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
+                }
                 break;
             case ICE_CONTROLLER_STATE_READY:
-                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
-                                              NULL );
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                       ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK,
+                                                       NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+                }
                 break;
             case ICE_CONTROLLER_STATE_CLOSING:
-                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
-                                              NULL );
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
+                                                       NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE closing event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+                }
                 break;
             case ICE_CONTROLLER_STATE_CLOSED:
-                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
-                                              NULL );
+                result = pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                                       ICE_CONTROLLER_CB_EVENT_ICE_CLOSED,
+                                                       NULL );
+                if( result != 0 )
+                {
+                    LogDebug( ( "Failed to process ICE closed event, result: %d.", result ) );
+                    IceController_UpdateTimerInterval( pCtx,
+                                                       ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+                }
                 break;
             default:
                 LogError( ( "Unexpected state: %d.", pCtx->state ) );
