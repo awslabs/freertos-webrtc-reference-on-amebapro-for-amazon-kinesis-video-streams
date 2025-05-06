@@ -13,14 +13,14 @@
     void vAssert( uint32_t ulLine, const char *pcfile )
     {
         char * pNullPtr = NULL;
-        printf("Assertion trigged at line %d file: %s\n\r", ulLine, pcfile);
+        printf("Assertion trigged at line %ld file: %s\n\r", ulLine, pcfile);
         printf("pNullPtr %c\n\r", *pNullPtr);
     }
 #else /* DEBUG != 0 */
     void vAssert(uint32_t ulLine, const char *pcfile)
     {
         volatile static int lock_assert = 1;
-        rt_printf("Assertion trigged at line %d file: %s\n\r", ulLine, pcfile);
+        rt_printf("Assertion trigged at line %ld file: %s\n\r", ulLine, pcfile);
         while (lock_assert);
     }
 #endif /* DEBUG != 0 */
