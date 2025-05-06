@@ -652,13 +652,13 @@ static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
     {
         pTwccMetaData = ( PeerConnectionTwccMetaData_t * ) pCustomContext;
 
-        pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
-                                                                     ( ( double ) percentLost ) );
-
         currentTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
         lostPacketCount = pTwccBandwidthInfo->sentPackets - pTwccBandwidthInfo->receivedPackets;
         percentLost = ( double ) ( ( pTwccBandwidthInfo->sentPackets > 0 ) ? ( ( double ) ( lostPacketCount * 100 ) / ( double )pTwccBandwidthInfo->sentPackets ) : 0.0 );
         timeDifference = currentTimeUs - pTwccMetaData->lastAdjustmentTimeUs;
+
+        pTwccMetaData->averagePacketLoss = EMA_ACCUMULATOR_GET_NEXT( pTwccMetaData->averagePacketLoss,
+                                                                     ( ( double ) percentLost ) );
 
         if( timeDifference < PEER_CONNECTION_TWCC_BITRATE_ADJUSTMENT_INTERVAL_US )
         {

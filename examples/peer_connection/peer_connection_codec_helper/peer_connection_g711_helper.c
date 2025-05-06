@@ -163,6 +163,8 @@ PeerConnectionResult_t PeerConnectionG711Helper_WriteG711Frame( PeerConnectionSe
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
     uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    /* Add TWCC packet tracking */
+    TwccPacketInfo_t packetInfo;
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
@@ -287,6 +289,15 @@ PeerConnectionResult_t PeerConnectionG711Helper_WriteG711Frame( PeerConnectionSe
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
                                                                                                     pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
+
+                memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
+                packetInfo.packetSize = packetG711.packetDataLength;
+                packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
+                packetInfo.packetSeqNum = pSession->rtpConfig.twccSequence;
+
+                RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
+                                               &packetInfo );
+                                               
                 pSession->rtpConfig.twccSequence++;
             }
 

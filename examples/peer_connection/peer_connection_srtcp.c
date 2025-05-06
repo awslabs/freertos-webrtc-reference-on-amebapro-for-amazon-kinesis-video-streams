@@ -408,7 +408,7 @@ static PeerConnectionResult_t OnRtcpNackEvent( PeerConnectionSession_t * pSessio
             if( ( twccBandwidthInfo.duration > 0 ) && ( pSession->pCtx->onBandwidthEstimationCallback != NULL ) )
             {
                 /* Call the bandwidth estimation callback */
-                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->onBandwidthEstimationCallback,
+                pSession->pCtx->onBandwidthEstimationCallback( pSession->pCtx->pOnBandwidthEstimationCallbackContext,
                                                                &twccBandwidthInfo );
             }
 
