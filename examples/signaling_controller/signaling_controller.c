@@ -43,6 +43,8 @@
 
 #define SIGNALING_CONTROLLER_REFRESH_ICE_SERVER_CONFIGS_TIMEOUT ( 15 )
 
+static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx );
+
 static SignalingControllerResult_t UpdateIceServerConfigs( SignalingControllerContext_t * pCtx,
                                                            SignalingIceServer_t * pIceServerList,
                                                            size_t iceServerListNum );
@@ -215,8 +217,8 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
     awsCreds.pUserAgent = pCtx->pUserAgentName;
     awsCreds.userAgentLength = pCtx->userAgentNameLength;
 
-    awsCreds.pIotThingName = pCtx->pIotThingName;
-    awsCreds.iotThingNameLength = pCtx->iotThingNameLength;
+    awsCreds.pThingName = pCtx->pThingName;
+    awsCreds.thingNameLength = pCtx->thingNameLength;
 
     awsCreds.pSessionToken = &( pCtx->sessionToken[ 0 ] );
     awsCreds.sessionTokenLength = pCtx->sessionTokenLength;
@@ -288,8 +290,8 @@ static SignalingControllerResult_t SignalingController_WebsocketConnect( Signali
     awsCreds.pUserAgent = pCtx->pUserAgentName;
     awsCreds.userAgentLength = pCtx->userAgentNameLength;
 
-    awsCreds.pIotThingName = pCtx->pIotThingName;
-    awsCreds.iotThingNameLength = pCtx->iotThingNameLength;
+    awsCreds.pThingName = pCtx->pThingName;
+    awsCreds.thingNameLength = pCtx->thingNameLength;
 
     awsCreds.pSessionToken = &( pCtx->sessionToken[ 0 ] );
     awsCreds.sessionTokenLength = pCtx->sessionTokenLength;
@@ -326,7 +328,26 @@ static SignalingControllerResult_t SignalingController_WebsocketConnect( Signali
     return ret;
 }
 
-static void printMetrics( SignalingControllerContext_t * pCtx )
+static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx )
+{
+    uint8_t credentialsExpired = 0U;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+    if( ( pCtx->thingNameLength > 0 ) &&
+        ( pCtx->roleAliasLength > 0 ) &&
+        ( pCtx->iotCredentialsEndpointLength ) )
+    {
+        if( ( pCtx->expirationSeconds == 0 ) ||
+            ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
+        {
+            credentialsExpired = 1U;
+        }
+    }
+
+    return credentialsExpired;
+}
+
+static void LogSignalingInfo( SignalingControllerContext_t * pCtx )
 {
     size_t i, j;
 
@@ -478,9 +499,9 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
         signalRequest.urlLength = SIGNALING_CONTROLLER_HTTP_URL_BUFFER_LENGTH;
 
         retSignal = Signaling_ConstructFetchTempCredsRequestForAwsIot( pCtx->pIotCredentialsEndpoint,
-                                                                       pCtx->credEndpointLength,
+                                                                       pCtx->iotCredentialsEndpointLength,
                                                                        pCtx->pRoleAlias,
-                                                                       pCtx->iotThingRoleAliasLength,
+                                                                       pCtx->roleAliasLength,
                                                                        &signalRequest );
 
         if( retSignal != SIGNALING_RESULT_OK )
@@ -594,7 +615,7 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     return ret;
 }
 
-static SignalingControllerResult_t describeSignalingChannel( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t DescribeSignalingChannel( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -697,7 +718,7 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     return ret;
 }
 
-static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -1201,29 +1222,9 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     IceServerConfig_t * pIceServerConfigs;
     size_t iceServerConfigsCount;
-    uint64_t currentTimeSeconds;
-    uint8_t needFetchCredential = 0U;
-
-    /* Check input parameters. */
-    if( pCtx == NULL )
-    {
-        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
-    }
 
     /* Get security token. */
-    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) &&
-        ( pCtx->iotThingRoleAliasLength > 0 ) )
-    {
-        currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
-
-        if( ( pCtx->expirationSeconds == 0 ) ||
-            ( currentTimeSeconds >= pCtx->expirationSeconds - SIGNALING_CONTROLLER_FETCH_CREDS_GRACE_PERIOD_SEC ) )
-        {
-            needFetchCredential = 1U;
-        }
-    }
-
-    if( ( ret == SIGNALING_CONTROLLER_RESULT_OK ) && ( needFetchCredential != 0U ) )
+    if( AreCredentialsExpired( pCtx ) != 0U )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_CREDENTIALS );
         ret = FetchTemporaryCredentials( pCtx );
@@ -1234,7 +1235,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
-        ret = describeSignalingChannel( pCtx );
+        ret = DescribeSignalingChannel( pCtx );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
     }
 
@@ -1242,7 +1243,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
-        ret = getSignalingChannelEndpoints( pCtx );
+        ret = GetSignalingChannelEndpoints( pCtx );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
     }
 
@@ -1272,7 +1273,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     /* Print metric. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        printMetrics( pCtx );
+        LogSignalingInfo( pCtx );
     }
 
     return ret;
@@ -1283,56 +1284,47 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
 
-    /* Check input parameters. */
-    if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
+    pCtx->awsConfig = pConnectInfo->awsConfig;
+
+    pCtx->pChannelName = pConnectInfo->channelName.pChannelName;
+    pCtx->channelNameLength = pConnectInfo->channelName.channelNameLength;
+
+    pCtx->pUserAgentName = pConnectInfo->pUserAgentName;
+    pCtx->userAgentNameLength = pConnectInfo->userAgentNameLength;
+
+    pCtx->pIotCredentialsEndpoint = pConnectInfo->awsIotCreds.pIotCredentialsEndpoint;
+    pCtx->iotCredentialsEndpointLength = pConnectInfo->awsIotCreds.iotCredentialsEndpointLength;
+
+    pCtx->pThingName = pConnectInfo->awsIotCreds.pThingName;
+    pCtx->thingNameLength = pConnectInfo->awsIotCreds.thingNameLength;
+
+    pCtx->pRoleAlias = pConnectInfo->awsIotCreds.pRoleAlias;
+    pCtx->roleAliasLength = pConnectInfo->awsIotCreds.roleAliasLength;
+
+    memcpy( pCtx->accessKeyId, pConnectInfo->awsCreds.pAccessKeyId, pConnectInfo->awsCreds.accessKeyIdLength );
+    pCtx->accessKeyIdLength = pConnectInfo->awsCreds.accessKeyIdLength;
+    pCtx->accessKeyId[ pCtx->accessKeyIdLength ] = '\0';
+
+    memcpy( pCtx->secretAccessKey, pConnectInfo->awsCreds.pSecretAccessKey, pConnectInfo->awsCreds.secretAccessKeyLength );
+    pCtx->secretAccessKeyLength = pConnectInfo->awsCreds.secretAccessKeyLength;
+    pCtx->secretAccessKey[ pCtx->secretAccessKeyLength ] = '\0';
+
+    memcpy( pCtx->sessionToken, pConnectInfo->awsCreds.pSessionToken, pConnectInfo->awsCreds.sessionTokenLength );
+    pCtx->sessionTokenLength = pConnectInfo->awsCreds.sessionTokenLength;
+    pCtx->sessionToken[ pCtx->sessionTokenLength ] = '\0';
+
+    pCtx->messageReceivedCallback = pConnectInfo->messageReceivedCallback;
+    pCtx->pMessageReceivedCallbackData = pConnectInfo->pMessageReceivedCallbackData;
+
+    pCtx->expirationSeconds = pConnectInfo->awsCreds.expirationSeconds;
+
+    pCtx->enableStorageSession = pConnectInfo->enableStorageSession;
+
+    ret = ConnectToSignalingService( pCtx );
+
+    if( ret != SIGNALING_CONTROLLER_RESULT_OK )
     {
-        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
-    }
-
-    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
-    {
-        pCtx->awsConfig = pConnectInfo->awsConfig;
-
-        pCtx->pChannelName = pConnectInfo->channelName.pChannelName;
-        pCtx->channelNameLength = pConnectInfo->channelName.channelNameLength;
-
-        pCtx->pUserAgentName = pConnectInfo->pUserAgentName;
-        pCtx->userAgentNameLength = pConnectInfo->userAgentNameLength;
-
-        pCtx->pIotCredentialsEndpoint = pConnectInfo->awsIotCreds.pIotCredentialsEndpoint;
-        pCtx->credEndpointLength = pConnectInfo->awsIotCreds.iotCredentialsEndpointLength;
-
-        pCtx->pIotThingName = pConnectInfo->awsIotCreds.pThingName;
-        pCtx->iotThingNameLength = pConnectInfo->awsIotCreds.thingNameLength;
-
-        pCtx->pRoleAlias = pConnectInfo->awsIotCreds.pRoleAlias;
-        pCtx->iotThingRoleAliasLength = pConnectInfo->awsIotCreds.roleAliasLength;
-
-        memcpy( pCtx->accessKeyId, pConnectInfo->awsCreds.pAccessKeyId, pConnectInfo->awsCreds.accessKeyIdLength );
-        pCtx->accessKeyIdLength = pConnectInfo->awsCreds.accessKeyIdLength;
-        pCtx->accessKeyId[ pCtx->accessKeyIdLength ] = '\0';
-
-        memcpy( pCtx->secretAccessKey, pConnectInfo->awsCreds.pSecretAccessKey, pConnectInfo->awsCreds.secretAccessKeyLength );
-        pCtx->secretAccessKeyLength = pConnectInfo->awsCreds.secretAccessKeyLength;
-        pCtx->secretAccessKey[ pCtx->secretAccessKeyLength ] = '\0';
-
-        memcpy( pCtx->sessionToken, pConnectInfo->awsCreds.pSessionToken, pConnectInfo->awsCreds.sessionTokenLength );
-        pCtx->sessionTokenLength = pConnectInfo->awsCreds.sessionTokenLength;
-        pCtx->sessionToken[ pCtx->sessionTokenLength ] = '\0';
-
-        pCtx->messageReceivedCallback = pConnectInfo->messageReceivedCallback;
-        pCtx->pMessageReceivedCallbackData = pConnectInfo->pMessageReceivedCallbackData;
-
-        pCtx->expirationSeconds = pConnectInfo->awsCreds.expirationSeconds;
-
-        pCtx->enableStorageSession = pConnectInfo->enableStorageSession;
-
-        ret = ConnectToSignalingService( pCtx );
-
-        if( ret != SIGNALING_CONTROLLER_RESULT_OK )
-        {
-            LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
-        }
+        LogError( ( "Failed to connect to signaling service. Result: %d!", ret ) );
     }
 
     return ret;
@@ -1341,48 +1333,66 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
 SignalingControllerResult_t SignalingController_StartListening( SignalingControllerContext_t * pCtx,
                                                                 const SignalingControllerConnectInfo_t * pConnectInfo )
 {
-    SignalingControllerResult_t ret;
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;;
     WebsocketResult_t websocketRet;
     MessageQueueResult_t messageQueueRet;
     SignalingControllerEventMessage_t eventMsg;
     size_t eventMsgLength;
 
-    for( ;; )
+    if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
     {
-        ret = SignalingController_ConnectServers( pCtx, pConnectInfo );
-    
-        if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        for( ;; )
         {
-            LogError( ( "Fail to connect with signaling controller." ) );
-        }
-        else
-        {
-            for( ;; )
+            ret = SignalingController_ConnectServers( pCtx, pConnectInfo );
+        
+            if( ret != SIGNALING_CONTROLLER_RESULT_OK )
             {
-                websocketRet = Websocket_Recv( &( pCtx->websocketContext ) );
-        
-                if( websocketRet != WEBSOCKET_RESULT_OK )
+                LogError( ( "Fail to connect with signaling controller." ) );
+            }
+            else
+            {
+                for( ;; )
                 {
-                    LogError( ( "Websocket_Recv fail, return 0x%x", websocketRet ) );
-                    ret = SIGNALING_CONTROLLER_RESULT_FAIL;
-                    break;
-                }
-        
-                messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
-        
-                while( messageQueueRet == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
-                {
-                    /* Handle event. */
-                    eventMsgLength = sizeof( SignalingControllerEventMessage_t );
-                    messageQueueRet = MessageQueue_Recv( &pCtx->sendMessageQueue, &eventMsg, &eventMsgLength );
-                    if( messageQueueRet == MESSAGE_QUEUE_RESULT_OK )
+                    websocketRet = Websocket_Recv( &( pCtx->websocketContext ) );
+            
+                    if( websocketRet != WEBSOCKET_RESULT_OK )
                     {
-                        /* Received message, process it. */
-                        LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
-                        ret = handleEvent( pCtx, &eventMsg );
+                        LogError( ( "Websocket_Recv fail, return 0x%x", websocketRet ) );
+                        ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+                        break;
                     }
-        
+            
                     messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
+            
+                    while( messageQueueRet == MESSAGE_QUEUE_RESULT_MQ_HAVE_MESSAGE )
+                    {
+                        /* Handle event. */
+                        eventMsgLength = sizeof( SignalingControllerEventMessage_t );
+                        messageQueueRet = MessageQueue_Recv( &pCtx->sendMessageQueue, &eventMsg, &eventMsgLength );
+                        if( messageQueueRet == MESSAGE_QUEUE_RESULT_OK )
+                        {
+                            /* Received message, process it. */
+                            LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
+                            ret = handleEvent( pCtx, &eventMsg );
+                        }
+            
+                        messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
+                    }
+
+                    if( AreCredentialsExpired( pCtx ) != 0U )
+                    {
+                        ret = FetchTemporaryCredentials( pCtx );
+                        if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+                        {
+                            LogWarn( ( "Fail to fetch temporary credentials, reconnecting." ) );
+                            break;
+                        }
+                    }
                 }
             }
         }
