@@ -805,7 +805,7 @@ SctpUtilsResult_t Sctp_CloseDataChannel( SctpSession_t * pSctpSession,
                                 pSrs,
                                 ( socklen_t ) len ) < 0 )
         {
-            LogDebug( ( "Failed to reset SCTP streams - this is expected if viewer was already closed" ) );
+            LogDebug( ( "Failed to reset SCTP streams - this is expected if viewer was already closed." ) );
             retStatus = SCTP_UTILS_RESULT_FAIL;
         }
     }
