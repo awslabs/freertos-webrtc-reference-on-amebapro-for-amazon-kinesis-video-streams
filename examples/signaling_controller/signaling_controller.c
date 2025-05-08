@@ -1378,7 +1378,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                         {
                             /* Received message, process it. */
                             LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
-                            ret = handleEvent( pCtx, &eventMsg );
+                            ret = HandleEvent( pCtx, &eventMsg );
                         }
             
                         messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
