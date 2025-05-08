@@ -191,12 +191,7 @@ For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvi
 
 ## Troubleshooting
 
-1. Permission denied while accessing `project/realtek_amebapro2_webrtc_application/GCC-RELEASE/mp/*.linux`.
-   Run the following command to add execute permission:
-   ```sh
-   chmod +x project/realtek_amebapro2_webrtc_application/GCC-RELEASE/mp/*.linux
-   ```
-2. If the peer connection is failing due to a full message queue:
+1. If the peer connection is failing due to a full message queue:
    ```sh
    [WARN][SendPeerConnectionEvent: 178] The message queue in peer connection session: 0x58*******f45 is full, dropping request type: 4
    ```
