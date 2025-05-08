@@ -60,19 +60,19 @@
 
 static void GenerateRandomBytes( uint8_t * pBuffer,
                                  size_t bufferLength );
-static void handleWslayControlMessage( void * pUserData,
+static void HandleWslayControlMessage( void * pUserData,
                                        uint8_t opcode,
                                        const uint8_t * pData,
                                        size_t dataLength );
-static void handleWslayDataMessage( void * pUserData,
+static void HandleWslayDataMessage( void * pUserData,
                                     const uint8_t * pData,
                                     size_t dataLength );
 
-static ssize_t wslay_send_callback( wslay_event_context_ptr pCtx,
-                                    const uint8_t * pData,
-                                    size_t dataLength,
-                                    int flags,
-                                    void * pUserData )
+static ssize_t WslaySendCallback( wslay_event_context_ptr pCtx,
+                                  const uint8_t * pData,
+                                  size_t dataLength,
+                                  int flags,
+                                  void * pUserData )
 {
     NetworkingWslayContext_t * pContext = ( NetworkingWslayContext_t * ) pUserData;
     TransportSend_t sendFunction = pContext->xTransportInterface.send;
@@ -81,12 +81,12 @@ static ssize_t wslay_send_callback( wslay_event_context_ptr pCtx,
     if( r < 0 )
     {
         wslay_event_set_error( pCtx, WSLAY_ERR_CALLBACK_FAILURE );
-        LogError( ( "wslay_send_callback failed with return %d", r ) );
+        LogError( ( "WslaySendCallback failed with return %d", r ) );
     }
     else if( r == 0 )
     {
         wslay_event_set_error( pCtx, WSLAY_ERR_WOULDBLOCK );
-        LogDebug( ( "wslay_send_callback returns 0" ) );
+        LogDebug( ( "WslaySendCallback returns 0" ) );
     }
     else
     {
@@ -96,11 +96,11 @@ static ssize_t wslay_send_callback( wslay_event_context_ptr pCtx,
     return r;
 }
 
-static ssize_t wslay_recv_callback( wslay_event_context_ptr pCtx,
-                                    uint8_t * pData,
-                                    size_t dataLength,
-                                    int flags,
-                                    void * pUserData )
+static ssize_t WslayRecvCallback( wslay_event_context_ptr pCtx,
+                                  uint8_t * pData,
+                                  size_t dataLength,
+                                  int flags,
+                                  void * pUserData )
 {
     NetworkingWslayContext_t * pContext = ( NetworkingWslayContext_t * ) pUserData;
     TransportRecv_t recvFunction = pContext->xTransportInterface.recv;
@@ -122,10 +122,10 @@ static ssize_t wslay_recv_callback( wslay_event_context_ptr pCtx,
     return r;
 }
 
-static int wslay_genmask_callback( wslay_event_context_ptr pCtx,
-                                   uint8_t * pBuf,
-                                   size_t bufLength,
-                                   void * pUserData )
+static int WslayGenmaskCallback( wslay_event_context_ptr pCtx,
+                                 uint8_t * pBuf,
+                                 size_t bufLength,
+                                 void * pUserData )
 {
     ( void ) pCtx;
     ( void ) pUserData;
@@ -134,21 +134,21 @@ static int wslay_genmask_callback( wslay_event_context_ptr pCtx,
     return 0;
 }
 
-static void wslay_msg_recv_callback( wslay_event_context_ptr pCtx,
-                                     const struct wslay_event_on_msg_recv_arg * pArg,
-                                     void * pUserData )
+static void WslayMsgRecvCallback( wslay_event_context_ptr pCtx,
+                                  const struct wslay_event_on_msg_recv_arg * pArg,
+                                  void * pUserData )
 {
     if( !wslay_is_ctrl_frame( pArg->opcode ) )
     {
-        handleWslayDataMessage( pUserData, pArg->msg, pArg->msg_length );
+        HandleWslayDataMessage( pUserData, pArg->msg, pArg->msg_length );
     }
     else
     {
-        handleWslayControlMessage( pUserData, pArg->opcode, pArg->msg, pArg->msg_length );
+        HandleWslayControlMessage( pUserData, pArg->opcode, pArg->msg, pArg->msg_length );
     }
 }
 
-static void handleWslayControlMessage( void * pUserData,
+static void HandleWslayControlMessage( void * pUserData,
                                        uint8_t opcode,
                                        const uint8_t * pData,
                                        size_t dataLength )
@@ -166,7 +166,7 @@ static void handleWslayControlMessage( void * pUserData,
     else if( opcode == WSLAY_CONNECTION_CLOSE )
     {
         LogInfo( ( "<== connection close, msg len: %u", dataLength ) );
-        TLS_FreeRTOS_Disconnect( &pContext->xTlsNetworkContext );
+        pContext->connectionCloseRequested = 1U;
     }
     else
     {
@@ -174,7 +174,7 @@ static void handleWslayControlMessage( void * pUserData,
     }
 }
 
-static void handleWslayDataMessage( void * pUserData,
+static void HandleWslayDataMessage( void * pUserData,
                                     const uint8_t * pData,
                                     size_t dataLength )
 {
@@ -183,7 +183,7 @@ static void handleWslayDataMessage( void * pUserData,
     ( void ) pContext->websocketRxCallback( ( char * ) pData, dataLength, pContext->pWebsocketRxCallbackContext );
 }
 
-static NetworkingWslayResult_t uriEncodedString( char * pSrc,
+static NetworkingWslayResult_t EncodeUriString( char * pSrc,
                                                  size_t srcLength,
                                                  char * pDst,
                                                  size_t * pDstLength )
@@ -331,7 +331,7 @@ static NetworkingWslayResult_t WriteUriEncodedChannelArn( char ** ppBuffer,
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, ( *ppBuffer ) + writtenLength, &encodedLength );
+        ret = EncodeUriString( *ppBuffer, writtenLength, ( *ppBuffer ) + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_WSLAY_RESULT_OK )
@@ -398,7 +398,7 @@ static NetworkingWslayResult_t WriteUriEncodedCredential( NetworkingWslayContext
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = EncodeUriString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_WSLAY_RESULT_OK )
@@ -462,7 +462,7 @@ static NetworkingWslayResult_t WriteUriEncodedDate( char ** ppBuffer,
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = EncodeUriString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_WSLAY_RESULT_OK )
@@ -523,7 +523,7 @@ static NetworkingWslayResult_t WriteUriEncodedExpires( char ** ppBuffer,
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = EncodeUriString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_WSLAY_RESULT_OK )
@@ -621,7 +621,7 @@ static NetworkingWslayResult_t WriteUriEncodeSecurityToken( NetworkingWslayConte
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         encodedLength = *pBufferLength - writtenLength;
-        ret = uriEncodedString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
+        ret = EncodeUriString( *ppBuffer, writtenLength, *ppBuffer + writtenLength, &encodedLength );
 
         /* Move and update pointer/remain length. */
         if( ret == NETWORKING_WSLAY_RESULT_OK )
@@ -636,7 +636,7 @@ static NetworkingWslayResult_t WriteUriEncodeSecurityToken( NetworkingWslayConte
 
 }
 
-static WebsocketResult_t generateQueryParameters( NetworkingWslayContext_t * pWebsocketCtx,
+static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWebsocketCtx,
                                                   const AwsCredentials_t * pAwsCredentials,
                                                   const char * pUrl,
                                                   size_t urlLength,
@@ -654,7 +654,7 @@ static WebsocketResult_t generateQueryParameters( NetworkingWslayContext_t * pWe
     char * pChannelArnValue, * pEqual;
     size_t channelArnValueLength;
     char * pCurrentWrite = pOutput;
-    size_t remainLength, uriEncodedStringLength;
+    size_t remainLength, EncodeUriStringLength;
     int32_t writtenLength;
     char dateBuffer[ NETWORKING_UTILS_TIME_BUFFER_LENGTH ];
     NetworkingUtilsCanonicalRequest_t canonicalRequest;
@@ -760,7 +760,7 @@ static WebsocketResult_t generateQueryParameters( NetworkingWslayContext_t * pWe
      * Note that we re-use the parsed result in pAppendHeaders from Websocket_Connect(). */
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
-        uriEncodedStringLength = ( *pOutputLength ) - remainLength;
+        EncodeUriStringLength = ( *pOutputLength ) - remainLength;
         writtenLength = snprintf( pCurrentWrite, remainLength,
                                   "%s: %.*s\r\n", "host", ( int ) hostLength, pHost );
 
@@ -786,7 +786,7 @@ static WebsocketResult_t generateQueryParameters( NetworkingWslayContext_t * pWe
         canonicalRequest.pPath = ( char * ) pPath;
         canonicalRequest.pathLength = pathLength;
         canonicalRequest.pCanonicalQueryString = pOutput;
-        canonicalRequest.canonicalQueryStringLength = uriEncodedStringLength;
+        canonicalRequest.canonicalQueryStringLength = EncodeUriStringLength;
         canonicalRequest.pCanonicalHeaders = pCurrentWrite;
         canonicalRequest.canonicalHeadersLength = writtenLength;
         canonicalRequest.pPayload = NULL;
@@ -1045,13 +1045,13 @@ static WebsocketResult_t InitializeWslayContext( NetworkingWslayContext_t * pWeb
 {
     NetworkingWslayResult_t ret = NETWORKING_WSLAY_RESULT_OK;
     struct wslay_event_callbacks callbacks = {
-        wslay_recv_callback,    /* wslay_event_recv_callback */
-        wslay_send_callback,    /* wslay_event_send_callback */
-        wslay_genmask_callback, /* wslay_event_genmask_callback */
+        WslayRecvCallback,    /* wslay_event_recv_callback */
+        WslaySendCallback,    /* wslay_event_send_callback */
+        WslayGenmaskCallback, /* wslay_event_genmask_callback */
         NULL,                   /* wslay_event_on_frame_recv_start_callback */
         NULL,                   /* wslay_event_on_frame_recv_chunk_callback */
         NULL,                   /* wslay_event_on_frame_recv_end_callback */
-        wslay_msg_recv_callback /* wslay_event_on_msg_recv_callback */
+        WslayMsgRecvCallback /* wslay_event_on_msg_recv_callback */
     };
 
     wslay_event_context_client_init( &pWebsocketCtx->wslayContext, &callbacks, pWebsocketCtx );
@@ -1393,7 +1393,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
             }
 
             /* Follow https://docs.aws.amazon.com/IAM/latest/UserGuide/create-signed-request.html to create query parameters. */
-            ret = generateQueryParameters( pWebsocketCtx,
+            ret = GenerateQueryParameters( pWebsocketCtx,
                                            pAwsCredentials,
                                            pServerInfo->pUrl,
                                            pServerInfo->urlLength,
@@ -1538,11 +1538,11 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 /* Send the request to AWS IoT Credentials Provider to obtain temporary credentials
                 * so that the demo application can access configured S3 bucket thereafter. */
                 xHttpStatus = HTTPClient_Send( &pWebsocketCtx->xTransportInterface,
-                                            &xRequestHeaders,
-                                            NULL,
-                                            0U,
-                                            &corehttpResponse,
-                                            HTTP_SEND_DISABLE_CONTENT_LENGTH_FLAG );
+                                               &xRequestHeaders,
+                                               NULL,
+                                               0U,
+                                               &corehttpResponse,
+                                               HTTP_SEND_DISABLE_CONTENT_LENGTH_FLAG );
 
                 if( xHttpStatus != HTTPSuccess )
                 {
@@ -1601,6 +1601,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
             }
 
             pWebsocketCtx->connectionEstablished = 1U;
+            pWebsocketCtx->connectionCloseRequested = 0U;
         } while( pdFALSE );
     }
 
@@ -1621,6 +1622,7 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
     if( pWebsocketCtx->wslayContext != NULL )
     {
         pWebsocketCtx->connectionEstablished = 0U;
+        pWebsocketCtx->connectionCloseRequested = 0U;
 
         /* Shutdown WebSocket read operations */
         wslay_event_shutdown_read( pWebsocketCtx->wslayContext );
@@ -1631,30 +1633,21 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
         /* Free the wslay context */
         wslay_event_context_free( pWebsocketCtx->wslayContext );
         pWebsocketCtx->wslayContext = NULL;
-
-        if( pWebsocketCtx->wslayContext != NULL )
-        {
-            LogError( ( "Failed to free wslay context" ) );
-            ret = WEBSOCKET_RESULT_FAIL;
-        }
     }
 
     /* Close wake-up socket if it's open */
-    if( ( ret == WEBSOCKET_RESULT_OK ) && ( pWebsocketCtx->socketWakeUp != -1 ) )
+    if( pWebsocketCtx->socketWakeUp != -1 )
     {
         if( close( pWebsocketCtx->socketWakeUp ) == -1 )
         {
             LogError( ( "Failed to close wake-up socket: errno=%d", errno ) );
-            ret = WEBSOCKET_RESULT_FAIL;
         }
-        else
-        {
-            pWebsocketCtx->socketWakeUp = -1;
-        }
+
+        pWebsocketCtx->socketWakeUp = -1;
     }
 
     /* Close TLS connection if it exists */
-    if( ret == WEBSOCKET_RESULT_OK )
+    if( pWebsocketCtx->connectionEstablished != 0U )
     {
         tlsStatus = TLS_FreeRTOS_Disconnect( &pWebsocketCtx->xTlsNetworkContext );
         if( tlsStatus != TLS_TRANSPORT_SUCCESS )
@@ -1662,6 +1655,8 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
             LogError( ( "Failed to disconnect TLS connection: Status=%d", tlsStatus ) );
             ret = WEBSOCKET_RESULT_FAIL;
         }
+
+        pWebsocketCtx->connectionEstablished = 0U;
     }
 
     /* Log the final status */
@@ -1734,12 +1729,28 @@ WebsocketResult_t Websocket_Recv( NetworkingWslayContext_t * pWebsocketCtx )
                 pWebsocketCtx->connectionEstablished = 0U;
             } 
         }
+    }
 
+    if( ret == NETWORKING_WSLAY_RESULT_OK )
+    {
+        if( ret == NETWORKING_WSLAY_RESULT_OK &&
+            pWebsocketCtx->connectionCloseRequested != 0U )
+        {
+            ( void ) Websocket_Disconnect( pWebsocketCtx );
+            ret = NETWORKING_WSLAY_RESULT_CONNETION_CLOSED;
+        }
+    }
+
+    if( ret == NETWORKING_WSLAY_RESULT_OK )
+    {
         if( FD_ISSET( pWebsocketCtx->socketWakeUp, &rfds ) )
         {
             ClearWakeUpSocketEvents( pWebsocketCtx );
         }
+    }
 
+    if( ret == NETWORKING_WSLAY_RESULT_OK )
+    {
         /* Handle ping interval. */
         currentTick = xTaskGetTickCount();
         if( currentTick - pWebsocketCtx->lastPingTick >= NETWORKING_WSLAY_PING_PONG_INTERVAL_TICKS )
