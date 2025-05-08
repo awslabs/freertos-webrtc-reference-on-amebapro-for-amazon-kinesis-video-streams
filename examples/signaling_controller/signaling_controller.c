@@ -594,7 +594,7 @@ static SignalingControllerResult_t FetchTemporaryCredentials( SignalingControlle
     return ret;
 }
 
-static SignalingControllerResult_t describeSignalingChannel( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t DescribeSignalingChannel( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -697,7 +697,7 @@ static SignalingControllerResult_t describeSignalingChannel( SignalingController
     return ret;
 }
 
-static SignalingControllerResult_t getSignalingChannelEndpoints( SignalingControllerContext_t * pCtx )
+static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     SignalingResult_t retSignal;
@@ -970,7 +970,7 @@ static void HandleForceRefreshIceServerConfigs( SignalingControllerContext_t * p
     }
 }
 
-static SignalingControllerResult_t handleEvent( SignalingControllerContext_t * pCtx,
+static SignalingControllerResult_t HandleEvent( SignalingControllerContext_t * pCtx,
                                                 SignalingControllerEventMessage_t * pEventMsg )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -1234,7 +1234,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
-        ret = describeSignalingChannel( pCtx );
+        ret = DescribeSignalingChannel( pCtx );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_DESCRIBE_CHANNEL );
     }
 
@@ -1242,7 +1242,7 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         Metric_StartEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
-        ret = getSignalingChannelEndpoints( pCtx );
+        ret = GetSignalingChannelEndpoints( pCtx );
         Metric_EndEvent( METRIC_EVENT_SIGNALING_GET_ENDPOINTS );
     }
 
@@ -1379,7 +1379,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                     {
                         /* Received message, process it. */
                         LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
-                        ret = handleEvent( pCtx, &eventMsg );
+                        ret = HandleEvent( pCtx, &eventMsg );
                     }
         
                     messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );
