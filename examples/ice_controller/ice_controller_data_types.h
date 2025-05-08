@@ -136,6 +136,7 @@ typedef enum IceControllerResult
     /* Info codes. */
     ICE_CONTROLLER_RESULT_OK = 0,
     ICE_CONTROLLER_RESULT_FOUND_CONNECTION,
+    ICE_CONTROLLER_RESULT_CONNECTION_IN_PROGRESS,
     ICE_CONTROLLER_RESULT_CONNECTION_CLOSED,
     ICE_CONTROLLER_RESULT_CONTEXT_ALREADY_CLOSED,
     ICE_CONTROLLER_RESULT_NOT_STUN_PACKET,
@@ -221,6 +222,7 @@ typedef enum IceControllerIceServerType
 typedef enum IceControllerSocketContextState
 {
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_NONE = 0,
+    ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS,
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_READY,
     ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED,
@@ -243,19 +245,6 @@ typedef struct IceControllerCandidate
     IceCandidateType_t candidateType;
 } IceControllerCandidate_t;
 
-typedef struct IceControllerSocketContext
-{
-    IceControllerSocketContextState_t state;
-    IceControllerSocketType_t socketType;
-    TlsSession_t tlsSession;
-
-    IceCandidate_t * pLocalCandidate;
-    IceCandidate_t * pRemoteCandidate;
-    IceEndpoint_t * pIceServerEndpoint;
-    IceCandidatePair_t * pCandidatePair;
-    int socketFd;
-} IceControllerSocketContext_t;
-
 typedef struct IceControllerIceServer
 {
     IceControllerIceServerType_t serverType; /* STUN or TURN */
@@ -268,6 +257,19 @@ typedef struct IceControllerIceServer
     size_t passwordLength;
     IceSocketProtocol_t protocol; //tcp or udp
 } IceControllerIceServer_t;
+
+typedef struct IceControllerSocketContext
+{
+    IceControllerSocketContextState_t state;
+    IceControllerSocketType_t socketType;
+    TlsSession_t tlsSession;
+
+    IceCandidate_t * pLocalCandidate;
+    IceCandidate_t * pRemoteCandidate;
+    IceControllerIceServer_t * pIceServer;
+    IceCandidatePair_t * pCandidatePair;
+    int socketFd;
+} IceControllerSocketContext_t;
 
 typedef struct IceControllerIceServerConfig
 {

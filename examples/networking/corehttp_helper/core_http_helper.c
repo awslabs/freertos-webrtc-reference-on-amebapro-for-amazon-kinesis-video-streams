@@ -168,7 +168,8 @@ HttpResult_t Http_Send( NetworkingCorehttpContext_t * pHttpCtx,
                                                443,
                                                &credentials,
                                                NETWORKING_COREHTTP_SEND_TIMEOUT_MS,
-                                               NETWORKING_COREHTTP_RECV_TIMEOUT_MS );
+                                               NETWORKING_COREHTTP_RECV_TIMEOUT_MS,
+                                               0 ); /* Flag 0 - Blocking call */
 
         if( xNetworkStatus != TLS_TRANSPORT_SUCCESS )
         {

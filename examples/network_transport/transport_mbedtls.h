@@ -34,6 +34,9 @@
 /* Transport interface include. */
 #include "transport_interface.h"
 
+/* Flags to be used in TLS_FreeRTOS_Connect. */
+#define TLS_CONNECT_NON_BLOCKING_HANDSHAKE   ( 1 << 0 )
+
 /**
  * @brief Secured connection context.
  */
@@ -105,14 +108,25 @@ typedef struct TlsSession
  */
 typedef enum TlsTransportStatus
 {
-    TLS_TRANSPORT_SUCCESS = 0,         /**< Function successfully completed. */
-    TLS_TRANSPORT_INVALID_PARAMETER,   /**< At least one parameter was invalid. */
-    TLS_TRANSPORT_INSUFFICIENT_MEMORY, /**< Insufficient memory required to establish connection. */
-    TLS_TRANSPORT_INVALID_CREDENTIALS, /**< Provided credentials were invalid. */
-    TLS_TRANSPORT_HANDSHAKE_FAILED,    /**< Performing TLS handshake with server failed. */
-    TLS_TRANSPORT_INTERNAL_ERROR,      /**< A call to a system API resulted in an internal error. */
-    TLS_TRANSPORT_CONNECT_FAILURE      /**< Initial connection to the server failed. */
+    TLS_TRANSPORT_SUCCESS = 0,              /**< Function successfully completed. */
+    TLS_TRANSPORT_INVALID_PARAMETER,        /**< At least one parameter was invalid. */
+    TLS_TRANSPORT_INSUFFICIENT_MEMORY,      /**< Insufficient memory required to establish connection. */
+    TLS_TRANSPORT_INVALID_CREDENTIALS,      /**< Provided credentials were invalid. */
+    TLS_TRANSPORT_HANDSHAKE_FAILED,         /**< Performing TLS handshake with server failed. */
+    TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS,    /**< TLS handshake with server is in-progress. */
+    TLS_TRANSPORT_INTERNAL_ERROR,           /**< A call to a system API resulted in an internal error. */
+    TLS_TRANSPORT_CONNECT_FAILURE           /**< Initial connection to the server failed. */
 } TlsTransportStatus_t;
+
+/**
+ * @brief Continue the TLS handshake that was started in TLS_FreeRTOS_Connect.
+ *
+ * @param[in] pNetworkContext The Network context.
+ *
+ * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INVALID_PARAMETER,
+ * #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
+ */
+TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pNetworkContext );
 
 /**
  * @brief Create a TLS connection with FreeRTOS sockets.
@@ -124,16 +138,19 @@ typedef enum TlsTransportStatus
  * @param[in] pNetworkCredentials Credentials for the TLS connection.
  * @param[in] receiveTimeoutMs Receive socket timeout.
  * @param[in] sendTimeoutMs Send socket timeout.
- *
+ * @param[in] flags Flags to configure additional behaviors, example, TLS_CONNECT_NON_BLOCKING_HANDSHAKE
+ * 
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INSUFFICIENT_MEMORY, #TLS_TRANSPORT_INVALID_CREDENTIALS,
- * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, or #TLS_TRANSPORT_CONNECT_FAILURE.
+ * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, or #TLS_TRANSPORT_CONNECT_FAILURE,
+ * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.
  */
 TlsTransportStatus_t TLS_FreeRTOS_Connect( TlsNetworkContext_t * pNetworkContext,
                                            const char * pHostName,
                                            uint16_t port,
                                            const NetworkCredentials_t * pNetworkCredentials,
                                            uint32_t receiveTimeoutMs,
-                                           uint32_t sendTimeoutMs );
+                                           uint32_t sendTimeoutMs,
+                                           uint32_t flags );
 
 /**
  * @brief Gracefully disconnect an established TLS connection.

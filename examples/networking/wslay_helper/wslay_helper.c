@@ -1378,7 +1378,8 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                                                        443,
                                                        &credentials,
                                                        NETWORKING_WSLAY_SEND_TIMEOUT_MS,
-                                                       NETWORKING_WSLAY_RECV_TIMEOUT_MS );
+                                                       NETWORKING_WSLAY_RECV_TIMEOUT_MS,
+                                                       0 ); /* Flag 0 - Blocking call */
         
                 if( xNetworkStatus != TLS_TRANSPORT_SUCCESS )
                 {

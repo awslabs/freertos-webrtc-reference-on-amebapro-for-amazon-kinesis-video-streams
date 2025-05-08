@@ -332,103 +332,126 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
+    TlsTransportStatus_t transportResult;
     uint32_t i;
-    size_t count;
     uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
     IceControllerSocketContext_t * pSocketContext;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipFromBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
-    uint8_t isLocked = 0U;
     uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
     if( xSemaphoreTake( pCtx->iceMutex, portMAX_DELAY ) == pdTRUE )
     {
-        isLocked = 1U;
+        for( i = 0; i < pCtx->socketsContextsCount; i++ )
+        {
+            pSocketContext = &( pCtx->socketsContexts[ i ] );
+
+            if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
+            {
+                transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
+
+                if( transportResult == TLS_TRANSPORT_SUCCESS )
+                {
+                    LogVerbose( ( "Connection with TURN server successful for socket fd %d", pSocketContext->socketFd ) );
+
+                    iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
+                                                       &( pSocketContext->pIceServer->iceEndpoint ),
+                                                       &( pSocketContext->pIceServer->userName[ 0 ] ),
+                                                       pSocketContext->pIceServer->userNameLength,
+                                                       &( pSocketContext->pIceServer->password[ 0 ] ),
+                                                       pSocketContext->pIceServer->passwordLength );
+
+                    if( iceResult != ICE_RESULT_OK )
+                    {
+                        LogError( ( "Failed to created relay candidate for socket fd %d",
+                                    pSocketContext->socketFd ) );
+                        IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                    }
+                    else
+                    {
+                        LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
+                                   pSocketContext->socketFd,
+                                   pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
+
+                        IceControllerNet_UpdateSocketContext( pCtx,
+                                                              pSocketContext,
+                                                              ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
+                                                              &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
+                                                              NULL,
+                                                              pSocketContext->pIceServer );
+                    }
+                }
+                else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
+                {
+                    LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
+                }
+                else
+                {
+                    LogError( ( "Connection with TURN server failed for socket fd %d", pSocketContext->socketFd ) );
+                    IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+                }
+            }
+            else if( pSocketContext->pLocalCandidate != NULL )
+            {
+        
+                stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+
+                iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
+                                                            pSocketContext->pLocalCandidate,
+                                                            currentTimeSeconds,
+                                                            stunBuffer,
+                                                            &stunBufferLength );
+
+                if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
+                {
+                    /*
+                    * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+                    * has no pending operations and can be skipped for this iteration
+                    */
+                    LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %lu", pSocketContext->pLocalCandidate->candidateId, i ) );
+                    continue;
+                }
+                else if( iceResult != ICE_RESULT_OK )
+                {
+                    /* Fail to create connectivity check for this round, ignore and continue next round. */
+                    LogWarn( ( "Fail to create request for local candidate ID: 0x%04x, result: %d", pSocketContext->pLocalCandidate->candidateId, iceResult ) );
+                    continue;
+                }
+                else
+                {
+                    /* Do nothing, coverity happy. */
+                }
+
+                LogVerbose( ( "Sending allocation/binding/refresh request from IP/port: %s/%d",
+                            IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
+                                                                ipFromBuffer,
+                                                                sizeof( ipFromBuffer ) ),
+                            pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+                IceControllerNet_LogStunPacket( stunBuffer,
+                                                stunBufferLength );
+
+                result = IceControllerNet_SendPacket( pCtx,
+                                                    pSocketContext,
+                                                    &( pSocketContext->pIceServer->iceEndpoint ),
+                                                    stunBuffer,
+                                                    stunBufferLength );
+
+                if( ( result != ICE_CONTROLLER_RESULT_OK ) &&
+                ( result != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
+                {
+                    LogWarn( ( "Unable to send packet to remote address, result: %d", result ) );
+                    continue;
+                }
+            }
+        }
+
+        xSemaphoreGive( pCtx->iceMutex );
     }
     else
     {
         LogError( ( "Failed to process local candidates: mutex lock acquisition." ) );
-        result = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
-    }
-
-    if( result == ICE_CONTROLLER_RESULT_OK )
-    {
-        iceResult = Ice_GetLocalCandidateCount( &pCtx->iceContext,
-                                                &count );
-        if( iceResult != ICE_RESULT_OK )
-        {
-            LogError( ( "Fail to query valid candidate count, result: %d", iceResult ) );
-            result = ICE_CONTROLLER_RESULT_FAIL_QUERY_LOCAL_CANDIDATE_COUNT;
-        }
-    }
-
-    if( result == ICE_CONTROLLER_RESULT_OK )
-    {
-        for( i = 0; i < count; i++ )
-        {
-            stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
-
-            iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
-                                                        &pCtx->iceContext.pLocalCandidates[i],
-                                                        currentTimeSeconds,
-                                                        stunBuffer,
-                                                        &stunBufferLength );
-
-            if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
-            {
-                /*
-                 * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
-                 * has no pending operations and can be skipped for this iteration
-                 */
-                LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %lu", pCtx->iceContext.pLocalCandidates[i].candidateId, i ) );
-                continue;
-            }
-            else if( iceResult != ICE_RESULT_OK )
-            {
-                /* Fail to create connectivity check for this round, ignore and continue next round. */
-                LogWarn( ( "Fail to create request for local candidate ID: 0x%04x, result: %d", pCtx->iceContext.pLocalCandidates[i].candidateId, iceResult ) );
-                continue;
-            }
-            else
-            {
-                /* Do nothing, coverity happy. */
-            }
-
-            pSocketContext = FindSocketContextByLocalCandidate( pCtx,
-                                                                &pCtx->iceContext.pLocalCandidates[i] );
-            if( pSocketContext == NULL )
-            {
-                LogWarn( ( "Not able to find socket context mapping, mapping local candidate: %p", pCtx->iceContext.pCandidatePairs[i].pLocalCandidate ) );
-                continue;
-            }
-
-            LogVerbose( ( "Sending allocation/binding/refresh request from IP/port: %s/%d",
-                          IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
-                                                             ipFromBuffer,
-                                                             sizeof( ipFromBuffer ) ),
-                          pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
-            IceControllerNet_LogStunPacket( stunBuffer,
-                                            stunBufferLength );
-
-            result = IceControllerNet_SendPacket( pCtx,
-                                                  pSocketContext,
-                                                  pSocketContext->pIceServerEndpoint,
-                                                  stunBuffer,
-                                                  stunBufferLength );
-
-            if( ( result != ICE_CONTROLLER_RESULT_OK ) && ( result != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
-            {
-                LogWarn( ( "Unable to send packet to remote address, result: %d", result ) );
-                continue;
-            }
-        }
-    }
-
-    if( isLocked != 0U )
-    {
-        xSemaphoreGive( pCtx->iceMutex );
     }
 }
 
@@ -503,7 +526,7 @@ static IceControllerResult_t HandleCandidatePairRequest( IceControllerContext_t 
 
         if( pTargetCandidatePair->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
         {
-            pDestEndpoint = pSocketContext->pIceServerEndpoint;
+            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
         }
         else
         {
@@ -732,7 +755,7 @@ static void ReleaseOtherSockets( IceControllerContext_t * pCtx,
                 else
                 {
                     /* Release all unused socket contexts. */
-                    LogDebug( ( "Closing socket for local candidate ID: 0x%04x", pCtx->socketsContexts[i].pLocalCandidate->candidateId ) );
+                    LogDebug( ( "Closing socket fd %d", pCtx->socketsContexts[i].socketFd ) );
                     IceControllerNet_FreeSocketContext( pCtx, &pCtx->socketsContexts[i] );
                 }
             }
@@ -1646,7 +1669,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                     else
                     {
                         /* Redirect the output to the TURN server instead of remote endpoint. */
-                        pDestEndpoint = pCtx->pNominatedSocketContext->pIceServerEndpoint;
+                        pDestEndpoint = &( pCtx->pNominatedSocketContext->pIceServer->iceEndpoint );
 
                         if( iceResult == ICE_RESULT_OK )
                         {
