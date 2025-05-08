@@ -1619,44 +1619,58 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
     WebsocketResult_t ret = WEBSOCKET_RESULT_OK;
     TlsTransportStatus_t tlsStatus = TLS_TRANSPORT_SUCCESS;
 
-    if( pWebsocketCtx->wslayContext != NULL )
+    if( pWebsocketCtx == NULL )
     {
-        pWebsocketCtx->connectionEstablished = 0U;
-        pWebsocketCtx->connectionCloseRequested = 0U;
-
-        /* Shutdown WebSocket read operations */
-        wslay_event_shutdown_read( pWebsocketCtx->wslayContext );
-
-        /* Shutdown WebSocket write operations */
-        wslay_event_shutdown_write( pWebsocketCtx->wslayContext );
-
-        /* Free the wslay context */
-        wslay_event_context_free( pWebsocketCtx->wslayContext );
-        pWebsocketCtx->wslayContext = NULL;
+        ret = WEBSOCKET_RESULT_BAD_PARAMETER;
     }
 
-    /* Close wake-up socket if it's open */
-    if( pWebsocketCtx->socketWakeUp != -1 )
+    if( ret == WEBSOCKET_RESULT_OK )
     {
-        if( close( pWebsocketCtx->socketWakeUp ) == -1 )
+        if( pWebsocketCtx->wslayContext != NULL )
         {
-            LogError( ( "Failed to close wake-up socket: errno=%d", errno ) );
+            pWebsocketCtx->connectionEstablished = 0U;
+            pWebsocketCtx->connectionCloseRequested = 0U;
+    
+            /* Shutdown WebSocket read operations */
+            wslay_event_shutdown_read( pWebsocketCtx->wslayContext );
+    
+            /* Shutdown WebSocket write operations */
+            wslay_event_shutdown_write( pWebsocketCtx->wslayContext );
+    
+            /* Free the wslay context */
+            wslay_event_context_free( pWebsocketCtx->wslayContext );
+            pWebsocketCtx->wslayContext = NULL;
         }
-
-        pWebsocketCtx->socketWakeUp = -1;
     }
 
-    /* Close TLS connection if it exists */
-    if( pWebsocketCtx->connectionEstablished != 0U )
+    if( ret == WEBSOCKET_RESULT_OK )
     {
-        tlsStatus = TLS_FreeRTOS_Disconnect( &pWebsocketCtx->xTlsNetworkContext );
-        if( tlsStatus != TLS_TRANSPORT_SUCCESS )
+        /* Close wake-up socket if it's open */
+        if( pWebsocketCtx->socketWakeUp != -1 )
         {
-            LogError( ( "Failed to disconnect TLS connection: Status=%d", tlsStatus ) );
-            ret = WEBSOCKET_RESULT_FAIL;
-        }
+            if( close( pWebsocketCtx->socketWakeUp ) == -1 )
+            {
+                LogError( ( "Failed to close wake-up socket: errno=%d", errno ) );
+            }
 
-        pWebsocketCtx->connectionEstablished = 0U;
+            pWebsocketCtx->socketWakeUp = -1;
+        }
+    }
+
+    if( ret == WEBSOCKET_RESULT_OK )
+    {
+        /* Close TLS connection if it exists */
+        if( pWebsocketCtx->connectionEstablished != 0U )
+        {
+            tlsStatus = TLS_FreeRTOS_Disconnect( &pWebsocketCtx->xTlsNetworkContext );
+            if( tlsStatus != TLS_TRANSPORT_SUCCESS )
+            {
+                LogError( ( "Failed to disconnect TLS connection: Status=%d", tlsStatus ) );
+                ret = WEBSOCKET_RESULT_FAIL;
+            }
+
+            pWebsocketCtx->connectionEstablished = 0U;
+        }
     }
 
     /* Log the final status */
