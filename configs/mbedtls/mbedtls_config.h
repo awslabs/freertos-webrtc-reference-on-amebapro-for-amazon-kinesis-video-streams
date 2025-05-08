@@ -26,8 +26,15 @@
 
 #include "mbedtls/config_rsa.h"
 
-#define MBEDTLS_DEBUG_C
-#define MBEDTLS_DTLS_DEBUG_C
+#define MBEDTLS_HAVE_ASM
+
+#if DEBUG != 0
+    #define MBEDTLS_DEBUG_C
+    #define MBEDTLS_DTLS_DEBUG_C
+#else /* DEBUG != 0 */
+    #undef MBEDTLS_DEBUG_C
+#endif /* DEBUG != 0 */
+
 #define MBEDTLS_PLATFORM_C
 #define MBEDTLS_ERROR_C
 

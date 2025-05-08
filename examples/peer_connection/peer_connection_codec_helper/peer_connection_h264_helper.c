@@ -164,8 +164,10 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
     uint32_t packetSent = 0;
     uint32_t bytesSent = 0;
     uint32_t randomRtpTimeoffset = 0;    // TODO : Spec required random rtp time offset ( current implementation of KVS SDK )
+    #if ENABLE_TWCC_SUPPORT
     /* Add TWCC packet tracking */
     TwccPacketInfo_t packetInfo;
+    #endif /* ENABLE_TWCC_SUPPORT */
 
     if( ( pSession == NULL ) ||
         ( pTransceiver == NULL ) ||
@@ -305,6 +307,7 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
                                                                                                     pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
 
+                #if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packetH264.packetDataLength;
                 packetInfo.localSentTime = NetworkingUtils_GetCurrentTimeUs( NULL );
@@ -312,7 +315,8 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
                                                &packetInfo );
-                                               
+                #endif /* ENABLE_TWCC_SUPPORT */
+
                 pSession->rtpConfig.twccSequence++;
             }
 
