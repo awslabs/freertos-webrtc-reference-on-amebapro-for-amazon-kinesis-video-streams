@@ -164,7 +164,7 @@ typedef struct SignalingControllerContext
 
     /* Credential Endpoint */
     const char * pIotCredentialsEndpoint;
-    size_t credEndpointLength;
+    size_t iotCredentialsEndpointLength;
 
     /* AWS IoT Thing name */
     const char * pIotThingName;
@@ -172,7 +172,7 @@ typedef struct SignalingControllerContext
 
     /* AWS IoT Thing Role Alias name */
     const char * pRoleAlias;
-    size_t iotThingRoleAliasLength;
+    size_t roleAliasLength;
 
     /* AWS IoT Thing certificate */
     const uint8_t * pIotThingCert;
@@ -221,8 +221,8 @@ typedef struct SignalingControllerContext
 
 typedef struct AwsIotCredentials
 {
-    char * pThingName;
-    size_t thingNameLength;
+    char * pIotThingName;
+    size_t iotThingNameLength;
     char * pRoleAlias;
     size_t roleAliasLength;
     char * pIotCredentialsEndpoint;

@@ -1550,8 +1550,8 @@ static void Master_Task( void * pParameter )
     #if defined( AWS_IOT_THING_ROLE_ALIAS )
     connectInfo.awsIotCreds.pIotCredentialsEndpoint = AWS_CREDENTIALS_ENDPOINT;
     connectInfo.awsIotCreds.iotCredentialsEndpointLength = strlen( AWS_CREDENTIALS_ENDPOINT );
-    connectInfo.awsIotCreds.pThingName = AWS_IOT_THING_NAME;
-    connectInfo.awsIotCreds.thingNameLength = strlen( AWS_IOT_THING_NAME );
+    connectInfo.awsIotCreds.pIotThingName = AWS_IOT_THING_NAME;
+    connectInfo.awsIotCreds.iotThingNameLength = strlen( AWS_IOT_THING_NAME );
     connectInfo.awsIotCreds.pRoleAlias = AWS_IOT_THING_ROLE_ALIAS;
     connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */

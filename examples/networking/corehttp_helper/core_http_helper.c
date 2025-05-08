@@ -241,7 +241,9 @@ HttpResult_t Http_Send( NetworkingCorehttpContext_t * pHttpCtx,
     }
 
     /* While fetching credential, append IoT Thing Name and use HTTP GET. */
-    if( ( ret == NETWORKING_COREHTTP_RESULT_OK ) && ( pRequest->isFetchingCredential != 0U ) && ( pAwsCredentials->iotThingNameLength > 0 ) )
+    if( ( ret == NETWORKING_COREHTTP_RESULT_OK ) &&
+        ( pRequest->isFetchingCredential != 0U ) &&
+        ( pAwsCredentials->iotThingNameLength > 0 ) )
     {
 
         xHttpStatus = HTTPClient_AddHeader( &xRequestHeaders,
