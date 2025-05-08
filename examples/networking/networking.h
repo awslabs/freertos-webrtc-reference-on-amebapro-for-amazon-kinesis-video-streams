@@ -78,8 +78,8 @@ typedef struct AwsCredentials
     size_t iotThingCertSize;
     const uint8_t * pIotThingPrivateKey;
     size_t iotThingPrivateKeySize;
-    const char * pThingName;
-    size_t thingNameLength;
+    const char * pIotThingName;
+    size_t iotThingNameLength;
     char * pSessionToken;
     size_t sessionTokenLength;
 

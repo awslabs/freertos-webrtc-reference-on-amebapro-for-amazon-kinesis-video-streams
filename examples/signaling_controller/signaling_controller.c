@@ -217,8 +217,8 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
     awsCreds.pUserAgent = pCtx->pUserAgentName;
     awsCreds.userAgentLength = pCtx->userAgentNameLength;
 
-    awsCreds.pThingName = pCtx->pThingName;
-    awsCreds.thingNameLength = pCtx->thingNameLength;
+    awsCreds.pIotThingName = pCtx->pIotThingName;
+    awsCreds.iotThingNameLength = pCtx->iotThingNameLength;
 
     awsCreds.pSessionToken = &( pCtx->sessionToken[ 0 ] );
     awsCreds.sessionTokenLength = pCtx->sessionTokenLength;
@@ -290,8 +290,8 @@ static SignalingControllerResult_t SignalingController_WebsocketConnect( Signali
     awsCreds.pUserAgent = pCtx->pUserAgentName;
     awsCreds.userAgentLength = pCtx->userAgentNameLength;
 
-    awsCreds.pThingName = pCtx->pThingName;
-    awsCreds.thingNameLength = pCtx->thingNameLength;
+    awsCreds.pIotThingName = pCtx->pIotThingName;
+    awsCreds.iotThingNameLength = pCtx->iotThingNameLength;
 
     awsCreds.pSessionToken = &( pCtx->sessionToken[ 0 ] );
     awsCreds.sessionTokenLength = pCtx->sessionTokenLength;
@@ -333,7 +333,7 @@ static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx )
     uint8_t credentialsExpired = 0U;
     uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
 
-    if( ( pCtx->thingNameLength > 0 ) &&
+    if( ( pCtx->iotThingNameLength > 0 ) &&
         ( pCtx->roleAliasLength > 0 ) &&
         ( pCtx->iotCredentialsEndpointLength ) )
     {
@@ -1295,8 +1295,8 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
     pCtx->pIotCredentialsEndpoint = pConnectInfo->awsIotCreds.pIotCredentialsEndpoint;
     pCtx->iotCredentialsEndpointLength = pConnectInfo->awsIotCreds.iotCredentialsEndpointLength;
 
-    pCtx->pThingName = pConnectInfo->awsIotCreds.pThingName;
-    pCtx->thingNameLength = pConnectInfo->awsIotCreds.thingNameLength;
+    pCtx->pIotThingName = pConnectInfo->awsIotCreds.pIotThingName;
+    pCtx->iotThingNameLength = pConnectInfo->awsIotCreds.iotThingNameLength;
 
     pCtx->pRoleAlias = pConnectInfo->awsIotCreds.pRoleAlias;
     pCtx->roleAliasLength = pConnectInfo->awsIotCreds.roleAliasLength;
