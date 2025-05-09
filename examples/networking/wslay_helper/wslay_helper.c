@@ -114,7 +114,7 @@ static ssize_t WslayRecvCallback( wslay_event_context_ptr pCtx,
     else if( r == 0 )
     {
         wslay_event_set_error( pCtx, WSLAY_ERR_WOULDBLOCK );
-        LogVerbose( ( "WslayRecvCallback returns 0" ) );
+        LogVerbose( ( "WslayRecvCallback: No data received (would block)" ) );
     }
     else
     {
