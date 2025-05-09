@@ -109,10 +109,12 @@ static ssize_t WslayRecvCallback( wslay_event_context_ptr pCtx,
     if( r < 0 )
     {
         wslay_event_set_error( pCtx, WSLAY_ERR_CALLBACK_FAILURE );
+        LogError( ( "WslayRecvCallback failed with return %d", r ) );
     }
     else if( r == 0 )
     {
         wslay_event_set_error( pCtx, WSLAY_ERR_WOULDBLOCK );
+        LogVerbose( ( "WslayRecvCallback returns 0" ) );
     }
     else
     {
@@ -1162,15 +1164,19 @@ static WebsocketResult_t SendWebsocketMessage( NetworkingWslayContext_t * pWebso
 
             retWslay = wslay_event_send( pWebsocketCtx->wslayContext );
 
+            if( retWslay != 0 )
+            {
+                LogInfo( ( "Fail to send this message at this moment, retWslay: %d.", retWslay ) );
+                ret = NETWORKING_WSLAY_RESULT_FAIL_SEND;
+            }
+        }
+
+        if( ret == NETWORKING_WSLAY_RESULT_OK )
+        {
             #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
             /* Get the queued message count after sending message. */
             last = wslay_event_get_queued_msg_count( pWebsocketCtx->wslayContext );
             #endif /* if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
-
-            if( retWslay != 0 )
-            {
-                LogInfo( ( "Fail to send this message at this moment." ) );
-            }
 
             LogVerbose( ( "Monitor wslay send queue (%u, %u, %u)", prev, mid, last ) );
         }
@@ -1198,7 +1204,7 @@ static WebsocketResult_t SendWebsocketText( NetworkingWslayContext_t * pWebsocke
     return SendWebsocketMessage( pWebsocketCtx, &arg );
 }
 
-static void SendWebsocketPing( NetworkingWslayContext_t * pWebsocketCtx )
+static WebsocketResult_t SendWebsocketPing( NetworkingWslayContext_t * pWebsocketCtx )
 {
     struct wslay_event_msg arg;
 
@@ -1206,7 +1212,7 @@ static void SendWebsocketPing( NetworkingWslayContext_t * pWebsocketCtx )
     arg.opcode = WSLAY_PING;
     arg.msg_length = 0;
     LogInfo( ( "wss ping ==>" ) );
-    ( void ) SendWebsocketMessage( pWebsocketCtx, &arg );
+    return SendWebsocketMessage( pWebsocketCtx, &arg );
 }
 
 static void ClearWakeUpSocketEvents( NetworkingWslayContext_t * pWebsocketCtx )
@@ -1250,7 +1256,6 @@ WebsocketResult_t Websocket_Init( NetworkingWslayContext_t * pWebsocketCtx,
 
     if( ( ret == NETWORKING_WSLAY_RESULT_OK ) && !first )
     {
-
         memset( &pWebsocketCtx->xTransportInterface, 0, sizeof( TransportInterface_t ) );
         memset( &pWebsocketCtx->xTlsNetworkContext, 0, sizeof( TlsNetworkContext_t ) );
         memset( &pWebsocketCtx->xTlsTransportParams, 0, sizeof( TlsTransportParams_t ) );
@@ -1768,8 +1773,14 @@ WebsocketResult_t Websocket_Recv( NetworkingWslayContext_t * pWebsocketCtx )
         currentTick = xTaskGetTickCount();
         if( currentTick - pWebsocketCtx->lastPingTick >= NETWORKING_WSLAY_PING_PONG_INTERVAL_TICKS )
         {
-            SendWebsocketPing( pWebsocketCtx );
+            ret = SendWebsocketPing( pWebsocketCtx );
             pWebsocketCtx->lastPingTick = currentTick;
+        }
+
+        if( ret != NETWORKING_WSLAY_RESULT_OK )
+        {
+            ( void ) Websocket_Disconnect( pWebsocketCtx );
+            ret = NETWORKING_WSLAY_RESULT_CONNETION_CLOSED;
         }
     }
 
