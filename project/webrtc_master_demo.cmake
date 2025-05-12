@@ -10,7 +10,7 @@ option(ENABLE_STREAMING_LOOPBACK "Loopback the received frames to the remote pee
 option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
 
 # Option to enable metric logging
-option(METRIC_PRINT_ENABLED "Enable Metric print logging" ON)
+option(METRIC_PRINT_ENABLED "Enable Metric print logging" OFF)
 
 file(
   GLOB
