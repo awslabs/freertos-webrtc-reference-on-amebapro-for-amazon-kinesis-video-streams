@@ -861,8 +861,8 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-    char ipBuffer[ INET_ADDRSTRLEN ];
-    char ipBuffer2[ INET_ADDRSTRLEN ];
+        char ipBuffer[ INET_ADDRSTRLEN ];
+        char ipBuffer2[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
     if( ( pCtx == NULL ) ||

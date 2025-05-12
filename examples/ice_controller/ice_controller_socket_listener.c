@@ -24,8 +24,8 @@
 #include "transport_mbedtls.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-#include "sctp_utils.h"
-#include "peer_connection_sctp.h"
+    #include "sctp_utils.h"
+    #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
