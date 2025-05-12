@@ -1524,9 +1524,9 @@ static void Master_Task( void * pParameter )
     
     memset( &connectInfo, 0, sizeof( SignalingControllerConnectInfo_t ) );
 
-    // #if ( JOIN_STORAGE_SESSION != 0 )
-    // connectInfo.enableStorageSession = 1;
-    // #endif
+    #if ( JOIN_STORAGE_SESSION != 0 )
+    connectInfo.enableStorageSession = 1;
+    #endif
 
     connectInfo.awsConfig.pRegion = AWS_REGION;
     connectInfo.awsConfig.regionLen = strlen( AWS_REGION );
