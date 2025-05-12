@@ -395,7 +395,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
             }
             else if( pSocketContext->pLocalCandidate != NULL )
             {
-        
+
                 stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
 
                 iceResult = Ice_CreateNextCandidateRequest( &pCtx->iceContext,
@@ -407,9 +407,9 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 if( iceResult == ICE_RESULT_NO_NEXT_ACTION )
                 {
                     /*
-                    * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
-                    * has no pending operations and can be skipped for this iteration
-                    */
+                     * When ICE_RESULT_NO_NEXT_ACTION is returned, this candidate pair
+                     * has no pending operations and can be skipped for this iteration
+                     */
                     LogVerbose( ( "No next action for local candidate ID: 0x%04x, idx: %lu", pSocketContext->pLocalCandidate->candidateId, i ) );
                     continue;
                 }
@@ -425,21 +425,21 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
                 }
 
                 LogVerbose( ( "Sending allocation/binding/refresh request from IP/port: %s/%d",
-                            IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
-                                                                ipFromBuffer,
-                                                                sizeof( ipFromBuffer ) ),
-                            pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
+                              IceControllerNet_LogIpAddressInfo( &pSocketContext->pLocalCandidate->endpoint,
+                                                                 ipFromBuffer,
+                                                                 sizeof( ipFromBuffer ) ),
+                              pSocketContext->pLocalCandidate->endpoint.transportAddress.port ) );
                 IceControllerNet_LogStunPacket( stunBuffer,
                                                 stunBufferLength );
 
                 result = IceControllerNet_SendPacket( pCtx,
-                                                    pSocketContext,
-                                                    &( pSocketContext->pIceServer->iceEndpoint ),
-                                                    stunBuffer,
-                                                    stunBufferLength );
+                                                      pSocketContext,
+                                                      &( pSocketContext->pIceServer->iceEndpoint ),
+                                                      stunBuffer,
+                                                      stunBufferLength );
 
                 if( ( result != ICE_CONTROLLER_RESULT_OK ) &&
-                ( result != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
+                    ( result != ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED ) )
                 {
                     LogWarn( ( "Unable to send packet to remote address, result: %d", result ) );
                     continue;
@@ -890,7 +890,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
         {
             iceResult = Ice_AddRemoteCandidate( &pCtx->iceContext,
                                                 pRemoteCandidate );
-    
+
             xSemaphoreGive( pCtx->iceMutex );
 
             if( iceResult != ICE_RESULT_OK )
@@ -901,7 +901,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
             else
             {
                 LogVerbose( ( "Received remote candidate with ID: 0x%04x, IP/port: %s/%d",
-                    pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId,
+                              pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId,
                               IceControllerNet_LogIpAddressInfo( pRemoteCandidate->pEndpoint,
                                                                  ipBuffer,
                                                                  sizeof( ipBuffer ) ),

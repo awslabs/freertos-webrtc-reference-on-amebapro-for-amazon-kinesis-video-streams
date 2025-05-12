@@ -70,11 +70,11 @@ static void GetLocalIPAdresses( IceEndpoint_t * pLocalIceEndpoints,
 }
 
 void IceControllerNet_UpdateSocketContext( IceControllerContext_t * pCtx,
-                                 IceControllerSocketContext_t * pSocketContext,
-                                 IceControllerSocketContextState_t newState,
-                                 IceCandidate_t * pLocalCandidate,
-                                 IceCandidate_t * pRemoteCandidate,
-                                 IceControllerIceServer_t * pIceServer )
+                                           IceControllerSocketContext_t * pSocketContext,
+                                           IceControllerSocketContextState_t newState,
+                                           IceCandidate_t * pLocalCandidate,
+                                           IceCandidate_t * pRemoteCandidate,
+                                           IceControllerIceServer_t * pIceServer )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
 
@@ -861,8 +861,8 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
-        char ipBuffer[ INET_ADDRSTRLEN ];
-        char ipBuffer2[ INET_ADDRSTRLEN ];
+    char ipBuffer[ INET_ADDRSTRLEN ];
+    char ipBuffer2[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE */
 
     if( ( pCtx == NULL ) ||
@@ -1051,7 +1051,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
 
     if( ret == ICE_CONTROLLER_RESULT_FAIL_SOCKET_SENDTO )
     {
-        /* 
+        /*
          * Socket read error detected.
          * This typically indicates the remote peer closed the connection.
          * Action required: Close the local socket to properly terminate the connection.

@@ -164,7 +164,7 @@ static TlsTransportStatus_t tlsSetup( TlsNetworkContext_t * pNetworkContext,
  * @param[in] pNetworkContext Network context.
  * @param[in] pNetworkCredentials TLS setup parameters.
  * @param[in] flags Flags to configure additional behaviors, example, TLS_CONNECT_NON_BLOCKING_HANDSHAKE
- * 
+ *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_HANDSHAKE_FAILED, or #TLS_TRANSPORT_INTERNAL_ERROR.
  */
 static TlsTransportStatus_t tlsHandshake( TlsNetworkContext_t * pNetworkContext,
@@ -580,7 +580,7 @@ static TlsTransportStatus_t tlsHandshake( TlsNetworkContext_t * pNetworkContext,
             returnStatus = TLS_FreeRTOS_ContinueHandshake( pNetworkContext );
         }
 
-        if( returnStatus ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
+        if( returnStatus == TLS_TRANSPORT_HANDSHAKE_FAILED )
         {
             LogError( ( "Failed to perform TLS handshake." ) );
         }

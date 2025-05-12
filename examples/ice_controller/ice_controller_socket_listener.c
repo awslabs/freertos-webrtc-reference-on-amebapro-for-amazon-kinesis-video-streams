@@ -24,8 +24,8 @@
 #include "transport_mbedtls.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-    #include "sctp_utils.h"
-    #include "peer_connection_sctp.h"
+#include "sctp_utils.h"
+#include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 #define ICE_CONTROLLER_SOCKET_LISTENER_SELECT_BLOCK_TIME_MS ( 50 )
@@ -203,7 +203,7 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
             if( pCandidatePair == NULL )
             {
                 LogWarn( ( "Invalid to find candidate pair for the remote endpoint." ) );
-                
+
                 LogInfo( ( "Target remote endpoint IP address: %s, port: %u",
                            IceControllerNet_LogIpAddressInfo( pRemoteIceEndpoint, ipBuffer, sizeof( ipBuffer ) ),
                            pRemoteIceEndpoint->transportAddress.port ) );
@@ -461,7 +461,7 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
 
     if( readBytes < 0 )
     {
-        /* 
+        /*
          * Socket read error detected (readBytes < 0).
          * This typically indicates the remote peer closed the connection.
          * Action required: Close the local socket to properly terminate the connection.
@@ -495,7 +495,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-                fds[i] = pCtx->socketsContexts[i].socketFd;
+            fds[i] = pCtx->socketsContexts[i].socketFd;
         }
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
@@ -550,7 +550,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) && (pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS) )
+            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) && ( pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS ) )
             {
                 HandleRxPacket( pCtx,
                                 &pCtx->socketsContexts[i],

@@ -139,7 +139,7 @@ TlsTransportStatus_t TLS_FreeRTOS_ContinueHandshake( TlsNetworkContext_t * pNetw
  * @param[in] receiveTimeoutMs Receive socket timeout.
  * @param[in] sendTimeoutMs Send socket timeout.
  * @param[in] flags Flags to configure additional behaviors, example, TLS_CONNECT_NON_BLOCKING_HANDSHAKE
- * 
+ *
  * @return #TLS_TRANSPORT_SUCCESS, #TLS_TRANSPORT_INSUFFICIENT_MEMORY, #TLS_TRANSPORT_INVALID_CREDENTIALS,
  * #TLS_TRANSPORT_HANDSHAKE_FAILED, #TLS_TRANSPORT_INTERNAL_ERROR, or #TLS_TRANSPORT_CONNECT_FAILURE,
  * or #TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS.

@@ -56,11 +56,11 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
 void IceControllerNet_FreeSocketContext( IceControllerContext_t * pCtx,
                                          IceControllerSocketContext_t * pSocketContext );
 void IceControllerNet_UpdateSocketContext( IceControllerContext_t * pCtx,
-                                            IceControllerSocketContext_t * pSocketContext,
-                                            IceControllerSocketContextState_t newState,
-                                            IceCandidate_t * pLocalCandidate,
-                                            IceCandidate_t * pRemoteCandidate,
-                                            IceControllerIceServer_t * pIceServer );
+                                           IceControllerSocketContext_t * pSocketContext,
+                                           IceControllerSocketContextState_t newState,
+                                           IceCandidate_t * pLocalCandidate,
+                                           IceCandidate_t * pRemoteCandidate,
+                                           IceControllerIceServer_t * pIceServer );
 void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                                      size_t stunPacketSize );
 IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerContext_t * pCtx,
