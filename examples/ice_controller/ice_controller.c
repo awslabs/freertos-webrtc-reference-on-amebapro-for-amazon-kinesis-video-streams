@@ -83,7 +83,7 @@ static void OnTimerExpire( void * pContext )
                                                        NULL );
                 if( result != 0 )
                 {
-                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %d.", result ) );
+                    LogDebug( ( "Failed to process ICE candidates and pairs event, result: %ld.", result ) );
                     IceController_UpdateTimerInterval( pCtx,
                                                        ICE_CONTROLLER_CONNECTIVITY_TIMER_INTERVAL_MS );
                 }
@@ -94,7 +94,7 @@ static void OnTimerExpire( void * pContext )
                                                        NULL );
                 if( result != 0 )
                 {
-                    LogDebug( ( "Failed to process ICE periodic connection check event, result: %d.", result ) );
+                    LogDebug( ( "Failed to process ICE periodic connection check event, result: %ld.", result ) );
                     IceController_UpdateTimerInterval( pCtx,
                                                        ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
                 }
@@ -105,7 +105,7 @@ static void OnTimerExpire( void * pContext )
                                                        NULL );
                 if( result != 0 )
                 {
-                    LogDebug( ( "Failed to process ICE closing event, result: %d.", result ) );
+                    LogDebug( ( "Failed to process ICE closing event, result: %ld.", result ) );
                     IceController_UpdateTimerInterval( pCtx,
                                                        ICE_CONTROLLER_CLOSING_INTERVAL_MS );
                 }
@@ -116,7 +116,7 @@ static void OnTimerExpire( void * pContext )
                                                        NULL );
                 if( result != 0 )
                 {
-                    LogDebug( ( "Failed to process ICE closed event, result: %d.", result ) );
+                    LogDebug( ( "Failed to process ICE closed event, result: %ld.", result ) );
                     IceController_UpdateTimerInterval( pCtx,
                                                        ICE_CONTROLLER_CLOSING_INTERVAL_MS );
                 }
@@ -877,7 +877,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
             }
             else
             {
-                LogVerbose( ( "Received remote candidate with ID: 0x%04x, IP/port: %s/%d",
+                LogVerbose( ( "Received remote candidate with IP/port: %s/%d",
                               IceControllerNet_LogIpAddressInfo( pRemoteCandidate->pEndpoint,
                                                                  ipBuffer,
                                                                  sizeof( ipBuffer ) ),
