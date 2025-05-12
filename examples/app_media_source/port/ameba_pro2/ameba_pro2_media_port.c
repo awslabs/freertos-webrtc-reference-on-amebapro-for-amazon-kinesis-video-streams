@@ -447,6 +447,7 @@ int32_t AppMediaSourcePort_Init( void )
                                               0, 0, 0, 0, 0,
                                               0, 0, 0, 0, 0,
                                               0, 0, 0 );
+        ( void ) voe_heap_size;
         LogInfo( ( "voe heap size = %d", voe_heap_size ) );
     }
 
