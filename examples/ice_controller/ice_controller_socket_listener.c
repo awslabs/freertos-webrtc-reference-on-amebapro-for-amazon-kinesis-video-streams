@@ -495,7 +495,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < pCtx->socketsContextsCount; i++ )
         {
-            fds[i] = pCtx->socketsContexts[i].socketFd;
+                fds[i] = pCtx->socketsContexts[i].socketFd;
         }
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
@@ -550,7 +550,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     {
         for( i = 0; i < fdsCount; i++ )
         {
-            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
+            if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) && (pCtx->socketsContexts[i].state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS) )
             {
                 HandleRxPacket( pCtx,
                                 &pCtx->socketsContexts[i],
