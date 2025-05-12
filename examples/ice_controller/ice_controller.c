@@ -910,8 +910,7 @@ IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t *
             }
             else
             {
-                LogVerbose( ( "Received remote candidate with ID: 0x%04x, IP/port: %s/%d",
-                              pCtx->iceContext.pRemoteCandidates[ pCtx->iceContext.numRemoteCandidates - 1 ].candidateId,
+                LogVerbose( ( "Received remote candidate with IP/port: %s/%d",
                               IceControllerNet_LogIpAddressInfo( pRemoteCandidate->pEndpoint,
                                                                  ipBuffer,
                                                                  sizeof( ipBuffer ) ),

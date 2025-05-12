@@ -132,6 +132,7 @@ typedef struct NetworkingWslayContext
 
     wslay_event_context_ptr wslayContext;
     uint8_t connectionEstablished;
+    uint8_t connectionCloseRequested;
 
     TickType_t lastPingTick;
     int socketWakeUp;
