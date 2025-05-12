@@ -24,7 +24,9 @@
 #include "ice_controller_private.h"
 #include "ice_api.h"
 #include "signaling_controller.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 #include "networking_utils.h"
 
 #define ICE_CONTROLLER_STUN_MESSAGE_TYPE_STRING_UNKNOWN "UNKNOWN"
@@ -864,7 +866,9 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
         if( ( pCandidatePair->state == ICE_CANDIDATE_PAIR_STATE_SUCCEEDED ) &&
             ( pCtx->pNominatedSocketContext == NULL ) )
         {
+            #if METRIC_PRINT_ENABLED
             Metric_EndEvent( METRIC_EVENT_ICE_FIND_P2P_CONNECTION );
+            #endif
             LogInfo( ( "Found nomination pair, local/remote candidate ID: 0x%04x / 0x%04x",
                        pCandidatePair->pLocalCandidate->candidateId,
                        pCandidatePair->pRemoteCandidate->candidateId ) );
@@ -1070,21 +1074,29 @@ void IceControllerNet_AddLocalCandidates( IceControllerContext_t * pCtx )
         {
             if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_HOST ) )
             {
+                #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
+                #endif
                 AddHostCandidate( pCtx, &pCtx->localEndpoints[i] );
+                #if METRIC_PRINT_ENABLED
                 Metric_EndEvent( METRIC_EVENT_ICE_GATHER_HOST_CANDIDATES );
+                #endif
             }
 
             if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_SRFLX ) )
             {
+                #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
+                #endif
                 AddSrflxCandidate( pCtx, &pCtx->localEndpoints[i] );
             }
         }
 
         if( ICE_CONTROLLER_IS_NAT_CONFIG_SET( pCtx, ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_SEND_RELAY ) )
         {
+            #if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
+            #endif
             AddRelayCandidates( pCtx );
         }
     }
@@ -1178,10 +1190,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
 
                 pCtx->metrics.pendingSrflxCandidateNum--;
+                #if METRIC_PRINT_ENABLED
                 if( pCtx->metrics.pendingSrflxCandidateNum == 0 )
                 {
                     Metric_EndEvent( METRIC_EVENT_ICE_GATHER_SRFLX_CANDIDATES );
                 }
+                #endif
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_UPDATED_RELAY_CANDIDATE_ADDRESS:
                 if( pCtx->onIceEventCallbackFunc )
@@ -1203,10 +1217,12 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     }
 
                     pCtx->metrics.pendingRelayCandidateNum--;
+                    #if METRIC_PRINT_ENABLED
                     if( pCtx->metrics.pendingRelayCandidateNum == 0 )
                     {
                         Metric_EndEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
                     }
+                    #endif
                 }
                 else
                 {

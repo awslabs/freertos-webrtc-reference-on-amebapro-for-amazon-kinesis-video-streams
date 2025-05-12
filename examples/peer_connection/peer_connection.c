@@ -25,7 +25,9 @@
 #include "rtp_api.h"
 #include "rtcp_api.h"
 #include "peer_connection_rolling_buffer.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 #include "peer_connection_codec_helper.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
@@ -707,7 +709,9 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
                 /* Start DTLS handshaking. */
+                #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
+                #endif
                 ret = StartDtlsHandshake( pSession );
 
                 /* This must set after StartDtlsHandshake, or the other thread might execute handshake earlier than expectation. */
@@ -905,7 +909,9 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
     uint32_t i;
 
     LogDebug( ( "Complete DTLS handshaking." ) );
+    #if METRIC_PRINT_ENABLED
     Metric_EndEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
+    #endif
 
     /* Verify remote fingerprint (if remote cert fingerprint is the expected one) */
     xNetworkStatus = DTLS_VerifyRemoteCertificateFingerprint( &pSession->dtlsSession.xNetworkContext.pParams->dtlsSslContext,
@@ -2124,12 +2130,20 @@ PeerConnectionResult_t PeerConnection_CloseSession( PeerConnectionSession_t * pS
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        /* Reset metrics. */
+        pSession->iceControllerContext.metrics.isFirstConnectivityRequest = 1;
+
         ret = PeerConnection_ResetTimer( pSession );
         if( ret != PEER_CONNECTION_RESULT_OK )
         {
             LogError( ( "PeerConnection_ResetTimer fail, result: %d", ret ) );
         }
     }
+
+    #if METRIC_PRINT_ENABLED
+    Metric_PrintMetrics();
+    Metric_ResetEvent();
+    #endif
 
     return ret;
 }
