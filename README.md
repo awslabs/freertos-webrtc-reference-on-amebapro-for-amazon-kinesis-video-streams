@@ -189,14 +189,6 @@ Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
 
 For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/webrtc-ingestion.html
 
-## Troubleshooting
-
-1. If the peer connection is failing due to a full message queue:
-   ```sh
-   [WARN][SendPeerConnectionEvent: 178] The message queue in peer connection session: 0x58*******f45 is full, dropping request type: 4
-   ```
-   Increase the size of PEER_CONNECTION_MAX_QUEUE_MSG_NUM, set it to a value that can accommodate the total number of ICE candidate pairs generated during connection.
-
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
