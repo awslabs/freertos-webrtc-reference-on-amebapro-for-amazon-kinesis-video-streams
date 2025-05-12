@@ -7,8 +7,8 @@
 Execute the following commands to clone this repository along with all the
 submodules-
 ```sh
-git clone https://github.com/ActoryOu/FreeRTOS-WebRTC.git
-cd FreeRTOS-WebRTC
+git clone https://github.com/awslabs/freertos-webrtc-reference-on-amebapro-for-amazon-kinesis-video-streams
+cd freertos-webrtc-reference-on-amebapro-for-amazon-kinesis-video-streams
 git submodule update --init --recursive
 ```
 
