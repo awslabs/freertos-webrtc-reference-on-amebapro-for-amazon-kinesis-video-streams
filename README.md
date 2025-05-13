@@ -134,7 +134,7 @@ A `formatted_certificate_and_ket.txt` file will be generated inside the `example
 ## Feature Options
 1. [Data Channel Support](#data-channel-support)
 1. [TWCC Support](#twcc-support)
-1. [Join Storage Session](#joinstoragesession-support)
+1. [Join Storage Session](#join-storage-session-support)
 1. [Enabling Metrics Logging](#enabling-metrics-logging)
 
 ### Data Channel Support
@@ -169,14 +169,14 @@ If not using the samples directly, following thing need to be done to set up Twc
 
 1. Set the callback that will have the business logic to modify the bitrate based on packet loss information. The callback can be set using `PeerConnection_SetSenderBandwidthEstimationCallback()` inside `PeerConnection_Init()`:
 ```c
-ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
-                                                            SampleSenderBandwidthEstimationHandler,
-                                                            &pSession->twccMetaData );
+ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
+                                                           SampleSenderBandwidthEstimationHandler,
+                                                           &pSession->twccMetaData );
 ```
 
-### JoinStorageSession Support
+### Join Storage Session Support
 
-JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
+Join Storage Session enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
 In our implementation (Master participant only):
 1. First connect to Kinesis Video Streams with WebRTC Signaling.
@@ -188,16 +188,16 @@ In our implementation (Master participant only):
 - **Audio Track**: Opus codec required.
 - Both audio and video tracks are mandatory for WebRTC ingestion.
 
-#### Enabling JoinStorageSession Support
+#### Enabling Join Storage Session Support
 
-JoinStorageSession is disabled by default in this application (via `JOIN_STORAGE_SESSION`) value set as `0` in `demo_config_template.h`. In order to enable it, set this value to `1`.
+Join Storage Session is disabled by default in this application (via `JOIN_STORAGE_SESSION`) value set as `0` in `demo_config_template.h`. In order to enable it, set this value to `1`.
 ```c
 #define JOIN_STORAGE_SESSION 0
 ```
 
-#### Prerequisites for enabling JoinStorageSession
+#### Prerequisites for enabling Join Storage Session
 
-Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
+Before using Join Storage Session, Set up Signaling Channel with Video Stream :
    - Create a Kinesis Video Streams signaling channel
    - Create a Kinesis Video Streams video stream
    - Connect the channel to the video stream
