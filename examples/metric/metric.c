@@ -15,7 +15,9 @@
  */
 
 #include "logging.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 #include "networking_utils.h"
 
 #define METRIC_PRINT_INTERVAL_MS ( 10000 )
@@ -28,9 +30,6 @@ static const char * ConvertEventToString( MetricEvent_t event );
 /* Calculate the duration in miliseconds from start & end time. */
 static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
                                           uint64_t endTimeUs );
-
-/* The task to print metric regularly. */
-static void Metric_Task( void * pParameter );
 
 static const char * ConvertEventToString( MetricEvent_t event )
 {
@@ -96,17 +95,6 @@ static uint64_t CalculateEventDurationMs( uint64_t startTimeUs,
     return ( endTimeUs - startTimeUs ) / 1000;
 }
 
-static void Metric_Task( void * pParameter )
-{
-    ( void ) pParameter;
-    for( ;; )
-    {
-        Metric_PrintMetrics();
-
-        vTaskDelay( pdMS_TO_TICKS( METRIC_PRINT_INTERVAL_MS ) );
-    }
-}
-
 void Metric_Init( void )
 {
     memset( &context, 0, sizeof( MetricContext_t ) );
@@ -121,16 +109,6 @@ void Metric_Init( void )
         context.isInit = 1U;
     }
 
-    /* Create task for video Tx. */
-    if( xTaskCreate( Metric_Task,
-                     ( ( const char * )"MetricTask" ),
-                     configMINIMAL_STACK_SIZE,
-                     NULL,
-                     tskIDLE_PRIORITY + 1,
-                     NULL ) != pdPASS )
-    {
-        LogError( ( "xTaskCreate(MetricTask) failed" ) );
-    }
 }
 
 void Metric_StartEvent( MetricEvent_t event )
@@ -195,6 +173,21 @@ void Metric_PrintMetrics( void )
         LogInfo( ( " == Run Time Stat Start ==\n%s\n == Run Time Stat End ==", runTimeStatsBuffer ) );
         LogInfo( ( "================================ Print Metrics End ================================" ) );
 
+        xSemaphoreGive( context.mutex );
+    }
+}
+
+void Metric_ResetEvent( void )
+{
+    if( ( context.isInit == 1U ) &&
+        ( xSemaphoreTake( context.mutex, portMAX_DELAY ) == pdTRUE ) )
+    {
+        for( int i = 0; i < METRIC_EVENT_MAX; i++ )
+        {
+            context.eventRecords[i].state = METRIC_EVENT_STATE_NONE;
+            context.eventRecords[i].endTimeUs = 0;
+            context.eventRecords[i].startTimeUs = 0;
+        }
         xSemaphoreGive( context.mutex );
     }
 }

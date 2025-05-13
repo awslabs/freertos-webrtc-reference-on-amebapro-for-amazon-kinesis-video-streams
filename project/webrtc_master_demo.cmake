@@ -9,6 +9,9 @@ option(ENABLE_STREAMING_LOOPBACK "Loopback the received frames to the remote pee
 # Option to control linking with usrsctp
 option(BUILD_USRSCTP_LIBRARY "Enable linking with usrsctp" ON)
 
+# Option to enable metric logging
+option(METRIC_PRINT_ENABLED "Enable Metric print logging" OFF)
+
 file(
   GLOB
   WEBRTC_APPLICATION_MASTER_SOURCE_FILES
@@ -27,13 +30,9 @@ file(
   "${REPO_ROOT_DIRECTORY}/examples/sdp_controller/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/string_utils/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/ice_controller/*.c"
-  if(BUILD_USRSCTP_LIBRARY)
-       "${REPO_ROOT_DIRECTORY}/examples/libusrsctp/*.c"
-  endif()
   "${REPO_ROOT_DIRECTORY}/examples/timer_controller/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/app_media_source/*.c"
-  "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2/*.c"
-  "${REPO_ROOT_DIRECTORY}/examples/metric/*.c" )
+  "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2/*.c" )
 
 set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/examples/master/"
@@ -57,11 +56,21 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/examples/string_utils"
      "${REPO_ROOT_DIRECTORY}/examples/ice_controller"
      "${REPO_ROOT_DIRECTORY}/examples/timer_controller"
-     "${REPO_ROOT_DIRECTORY}/examples/libusrsctp"
      "${REPO_ROOT_DIRECTORY}/examples/app_media_source"
-     "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2"
-     "${REPO_ROOT_DIRECTORY}/examples/metric" )
+     "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2" )
 
+if( BUILD_USRSCTP_LIBRARY )
+     file( GLOB USRSCTP_SRC_FILES "${REPO_ROOT_DIRECTORY}/examples/libusrsctp/*.c" )
+     list( APPEND WEBRTC_APPLICATION_MASTER_SOURCE_FILES ${USRSCTP_SRC_FILES} )
+     list( APPEND WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS "${REPO_ROOT_DIRECTORY}/examples/libusrsctp" )
+endif()
+ 
+if( METRIC_PRINT_ENABLED )
+     file(GLOB METRIC_SRC_FILES "${REPO_ROOT_DIRECTORY}/examples/metric/*.c")
+     list(APPEND WEBRTC_APPLICATION_MASTER_SOURCE_FILES ${METRIC_SRC_FILES})
+     list( APPEND WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS "${REPO_ROOT_DIRECTORY}/examples/metric" )
+endif()
+ 
 # Include dependencies
 # Include coreHTTP
 include( ${REPO_ROOT_DIRECTORY}/libraries/coreHTTP/httpFilePaths.cmake )
@@ -174,6 +183,18 @@ else()
      list(
           APPEND app_flags
           ENABLE_SCTP_DATA_CHANNEL=0
+     )
+endif()
+
+if(METRIC_PRINT_ENABLED)
+     list(
+          APPEND app_flags
+          METRIC_PRINT_ENABLED=1
+     )
+else()
+     list(
+          APPEND app_flags
+          METRIC_PRINT_ENABLED=0
      )
 endif()
 

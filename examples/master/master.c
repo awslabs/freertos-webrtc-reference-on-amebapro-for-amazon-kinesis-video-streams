@@ -33,7 +33,9 @@
 #include "demo_data_types.h"
 #include "networking_utils.h"
 #include "string_utils.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
@@ -223,11 +225,13 @@ static int initializeApplication( DemoContext_t * pDemoContext )
         }
     }
 
+    #if METRIC_PRINT_ENABLED
     if( ret == 0 )
     {
         /* Initialize Metric. */
         Metric_Init();
     }
+    #endif
 
     return ret;
 }
@@ -1423,7 +1427,9 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
     switch( pSignalingMessage->messageType )
     {
         case SIGNALING_TYPE_MESSAGE_SDP_OFFER:
+            #if METRIC_PRINT_ENABLED
             Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+            #endif
             HandleSdpOffer( &demoContext,
                             pSignalingMessage );
             break;

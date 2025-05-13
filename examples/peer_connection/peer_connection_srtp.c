@@ -20,7 +20,9 @@
 #include "peer_connection_srtp.h"
 #include "peer_connection_rolling_buffer.h"
 #include "peer_connection_jitter_buffer.h"
+#if METRIC_PRINT_ENABLED
 #include "metric.h"
+#endif
 
 /* API includes. */
 #include "rtp_api.h"

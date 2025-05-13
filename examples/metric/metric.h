@@ -86,6 +86,7 @@ void Metric_Init( void );
 void Metric_StartEvent( MetricEvent_t event );
 void Metric_EndEvent( MetricEvent_t event );
 void Metric_PrintMetrics( void );
+void Metric_ResetEvent( void );
 
 #ifdef __cplusplus
 }
