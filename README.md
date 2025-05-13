@@ -1,4 +1,4 @@
-# FreeRTOS-WebRTC
+# freertos-webrtc-reference-on-amebapro-for-amazon-kinesis-video-streams
 
 ## Ameba Pro2 Mini
 ![Board Image](docs/images/board.jpg)
@@ -13,30 +13,28 @@ git submodule update --init --recursive
 ```
 
 ## Setup
-1. Copy `examples/master/demo_config_template.h` and rename it to `examples/master/demo_config.h` and set the following:
-   * Set `AWS_KVS_CHANNEL_NAME` to your signaling channel name.
-## Required Configuration
+### Required Configuration
 Before choosing an authentication method, configure these common settings:
    * Copy `examples/master/demo_config_template.h` and rename it to `examples/master/demo_config.h` and set the following:
    * Set `AWS_REGION` to your AWS region.
    * Set `AWS_KVS_CHANNEL_NAME` to your KVS signaling channel name.
 
-## Authentication Methods
+### Authentication Methods
 Choose ONE of the following authentication options:
 
-### Option 1: Using Access Keys
+#### Option 1: Using Access Keys
    * Set `AWS_ACCESS_KEY_ID` to your access key.
    * Set `AWS_SECRET_ACCESS_KEY` to your secret access key.
    * Set `AWS_SESSION_TOKEN` to your session token (required only for temporary credentials).
 
-### Option 2: Using IoT Role-alias
+#### Option 2: Using IoT Role-alias
    * Set `AWS_CREDENTIALS_ENDPOINT` to your AWS Endpoint.
    * Set `AWS_IOT_THING_NAME` to your Thing Name associated with that Certificate.
    * Set `AWS_IOT_THING_ROLE_ALIAS` to your Role Alias.
    * Set `AWS_IOT_THING_CERT` to your IOT Core Certificate.
    * Set `AWS_IOT_THING_PRIVATE_KEY` to your IOT Core Private Key.
 
-NOTE :    To add the `AWS_IOT_THING_CERT` and `AWS_IOT_THING_PRIVATE_KEY` in the correct format, run the `format_cert_and_key.sh`.\
+NOTE : To add the `AWS_IOT_THING_CERT` and `AWS_IOT_THING_PRIVATE_KEY` in the correct format, run the `format_cert_and_key.sh`.\
 A `formatted_certificate_and_ket.txt` file will be generated inside the `examples/master/` path. You can copy the content and paste it in the `demo_config.h`
 
 ## Compile commands
@@ -71,7 +69,6 @@ A `formatted_certificate_and_ket.txt` file will be generated inside the `example
    ```sh
    cmake .. -G"Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake
    ```
-   **Note**: `BUILD_USRSCTP_LIBRARY` flag can be used to disable data channel and the build of `usrsctp` and `dcep` library. It can be used like: `cmake .. -G"Unix Makefiles" -DBUILD_USRSCTP_LIBRARY=OFF -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake`
 1. Run the following command to build:
    ```sh
    cmake --build . --target flash
@@ -134,7 +131,25 @@ A `formatted_certificate_and_ket.txt` file will be generated inside the `example
 1. Open TeraTerm (or minicom for Mac) and connect to the COM port.
 1. Press and release the Reset button.
 
-## TWCC support
+## Feature Options
+1. [Data Channel Support](#data-channel-support)
+1. [TWCC Support](#twcc-support)
+1. [Join Storage Session](#joinstoragesession-support)
+1. [Enabling Metrics Logging](#enabling-metrics-logging)
+
+### Data Channel Support
+
+WebRTC Data Channel is a bidirectional peer-to-peer communication channel for arbitrary application data. It operates over SCTP (Stream Control Transmission Protocol) and provides both reliable and unreliable data delivery modes.
+
+#### Enabling Data Channel Support
+
+Data channel support is enabled by default in this application through the `BUILD_USRSCTP_LIBRARY` flag, which is set to `ON` in [webrtc_master_demo.cmake](./project/webrtc_master_demo.cmake). To disable data channel support, set this flag to `OFF` using the cmake command below.
+
+```
+cmake .. -G"Unix Makefiles" -DBUILD_USRSCTP_LIBRARY=OFF -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake
+```
+
+### TWCC Support
 
 Transport Wide Congestion Control (TWCC) is a mechanism in WebRTC designed to enhance the performance and reliability of real-time communication over the internet. TWCC addresses the challenges of network congestion by providing detailed feedback on the transport of packets across the network, enabling adaptive bitrate control and optimization of media streams in real-time. This feedback mechanism is crucial for maintaining high-quality audio and video communication, as it allows senders to adjust their transmission strategies based on comprehensive information about packet losses, delays, and jitter experienced across the entire transport path.
 
@@ -142,7 +157,7 @@ The importance of TWCC in WebRTC lies in its ability to ensure efficient use of 
 
 To learn more about TWCC, check [TWCC spec](https://datatracker.ietf.org/doc/html/draft-holmer-rmcat-transport-wide-cc-extensions-01)
 
-### Enabling TWCC support
+#### Enabling TWCC Support
 
 TWCC is enabled by default in this application (via `ENABLE_TWCC_SUPPORT`) value set as `1` in `demo_config_template.h`. In order to disable it, set this value to `0`.
 
@@ -159,7 +174,7 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback(  pSession,
                                                             &pSession->twccMetaData );
 ```
 
-## JoinStorageSession support
+### JoinStorageSession Support
 
 JoinStorageSession enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
@@ -173,12 +188,13 @@ In our implementation (Master participant only):
 - **Audio Track**: Opus codec required.
 - Both audio and video tracks are mandatory for WebRTC ingestion.
 
-### Enabling JoinStorageSession support
+#### Enabling JoinStorageSession Support
 
 JoinStorageSession is disabled by default in this application (via `JOIN_STORAGE_SESSION`) value set as `0` in `demo_config_template.h`. In order to enable it, set this value to `1`.
 ```c
 #define JOIN_STORAGE_SESSION 0
 ```
+
 #### Prerequisites for enabling JoinStorageSession
 
 Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
@@ -189,7 +205,7 @@ Before using JoinStorageSession, Set up Signaling Channel with Video Stream :
 
 For detailed setup instructions, refer to: https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/webrtc-ingestion.html
 
-### Enabling metrics logging
+### Enabling Metrics Logging
 METRIC_PRINT_ENABLED flag enables detailed metrics logging for WebRTC setup. It logs the following time for each connection :
    - Duration to describe Signaling Channel
    - Duration to get Signaling Endpoints
