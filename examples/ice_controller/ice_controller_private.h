@@ -61,6 +61,9 @@ void IceControllerNet_UpdateSocketContext( IceControllerContext_t * pCtx,
                                            IceCandidate_t * pLocalCandidate,
                                            IceCandidate_t * pRemoteCandidate,
                                            IceControllerIceServer_t * pIceServer );
+IceControllerResult_t IceControllerNet_ExecuteTlsHandshake( IceControllerContext_t * pCtx,
+                                            IceControllerSocketContext_t * pSocketContext,
+                                            uint8_t isIceLockTakenBeforeCall );
 void IceControllerNet_LogStunPacket( uint8_t * pStunPacket,
                                      size_t stunPacketSize );
 IceControllerResult_t IceController_SendTurnRefreshAllocation( IceControllerContext_t * pCtx,

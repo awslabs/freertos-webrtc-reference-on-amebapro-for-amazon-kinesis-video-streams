@@ -334,7 +334,6 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 {
     IceControllerResult_t result = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
-    TlsTransportStatus_t transportResult;
     uint32_t i;
     uint8_t stunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH ];
     size_t stunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
@@ -352,58 +351,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 
             if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
             {
-                if( xSemaphoreTake( pCtx->socketMutex, portMAX_DELAY ) == pdTRUE )
-                {
-                    transportResult = TLS_FreeRTOS_ContinueHandshake( &( pSocketContext->tlsSession.xTlsNetworkContext ) );
-
-                    if( transportResult == TLS_TRANSPORT_SUCCESS )
-                    {
-                        LogVerbose( ( "Connection with TURN server successful for socket fd %d", pSocketContext->socketFd ) );
-
-                        iceResult = Ice_AddRelayCandidate( &( pCtx->iceContext ),
-                                                        &( pSocketContext->pIceServer->iceEndpoint ),
-                                                        &( pSocketContext->pIceServer->userName[ 0 ] ),
-                                                        pSocketContext->pIceServer->userNameLength,
-                                                        &( pSocketContext->pIceServer->password[ 0 ] ),
-                                                        pSocketContext->pIceServer->passwordLength );
-
-                        xSemaphoreGive( pCtx->socketMutex );
-
-                        if( iceResult != ICE_RESULT_OK )
-                        {
-                            LogError( ( "Failed to created relay candidate for socket fd %d",
-                                        pSocketContext->socketFd ) );
-                            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                        }
-                        else
-                        {
-                            LogInfo( ( "Created relay candidate with fd %d, ID: 0x%04x",
-                                    pSocketContext->socketFd,
-                                    pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ].candidateId ) );
-
-                            IceControllerNet_UpdateSocketContext( pCtx,
-                                                                pSocketContext,
-                                                                ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CREATE,
-                                                                &( pCtx->iceContext.pLocalCandidates[ pCtx->iceContext.numLocalCandidates - 1 ] ),
-                                                                NULL,
-                                                                pSocketContext->pIceServer );
-                        }
-                    }
-                    else
-                    {
-                        xSemaphoreGive( pCtx->socketMutex );
-                        
-                        if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
-                        {
-                            LogVerbose( ( "Connection still in-progress with TURN server for socket fd %d...", pSocketContext->socketFd ) );
-                        }
-                        else
-                        {
-                            LogError( ( "Connection with TURN server failed for socket fd %d", pSocketContext->socketFd ) );
-                            IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
-                        }
-                    }
-                }
+                result = IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
             }
             else if( pSocketContext->pLocalCandidate != NULL )
             {

@@ -488,7 +488,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     void * pOnRecvNonStunPacketCallbackContext = NULL;
     OnIceEventCallback_t onIceEventCallbackFunc;
     void * pOnIceEventCallbackCustomContext = NULL;
-    TlsTransportStatus_t transportResult;
+    IceControllerSocketContext_t * pSocketContext;
 
     FD_ZERO( &rfds );
 
@@ -553,33 +553,16 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         {
             if( ( fds[i] >= 0 ) && FD_ISSET( fds[i], &rfds ) )
             {
-                if(( pCtx->socketsContexts[i].state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS ))
-                {
-                    if( xSemaphoreTake( pCtx->socketMutex, portMAX_DELAY ) == pdTRUE )
-                    {
-                        transportResult = TLS_FreeRTOS_ContinueHandshake( &( pCtx->socketsContexts[i].tlsSession.xTlsNetworkContext ) );
-            
-                        xSemaphoreGive( pCtx->socketMutex );
+                pSocketContext = &( pCtx->socketsContexts[ i ] );
 
-                        if( transportResult ==  TLS_TRANSPORT_HANDSHAKE_FAILED )
-                        {
-                            LogError( ( "Failed to perform TLS handshake." ) );
-                        }
-                        else if( transportResult == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )
-                        {
-                            LogDebug( ( "TLS handshake is in progress." ) );
-                        }
-                        else
-                        {
-                            LogInfo( ( "(Network connection %p) TLS handshake successful.",
-                                &( pCtx->socketsContexts[i].tlsSession.xTlsNetworkContext ) ) );
-                        }
-                    }
+                if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
+                {
+                    ( void ) IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 0U );
                 }
                 else
                 {
                     HandleRxPacket( pCtx,
-                                    &pCtx->socketsContexts[i],
+                                    pSocketContext,
                                     onRecvNonStunPacketFunc,
                                     pOnRecvNonStunPacketCallbackContext,
                                     onIceEventCallbackFunc,
