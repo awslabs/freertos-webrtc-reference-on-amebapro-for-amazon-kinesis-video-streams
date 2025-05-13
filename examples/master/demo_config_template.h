@@ -81,6 +81,9 @@
 #error only one of audio format should be set
 #endif
 
+/* Video format setting. */
+#define USE_H265 0
+
 /* Join Storage Session setting. */
 #ifndef JOIN_STORAGE_SESSION
     #define JOIN_STORAGE_SESSION 0
