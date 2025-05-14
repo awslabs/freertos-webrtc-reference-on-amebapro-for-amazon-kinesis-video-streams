@@ -362,6 +362,9 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE:
                 PeerConnection_CloseSession( pSession );
+
+                /* Reset the state to init for next peer since ICE negotiation has not started yet */
+                OnClosePeerConnection( pSession );
                 break;
             default:
                 /* Unknown request, drop it. */
