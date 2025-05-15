@@ -179,6 +179,11 @@ ret = PeerConnection_SetSenderBandwidthEstimationCallback( pSession,
 
 ### Join Storage Session Support
 
+> [!WARNING]  
+> The "Join Storage Session" feature is currently in a beta state and may exhibit stability issues. Our team is actively working on improvements and fixes. Users may experience:
+> - Intermittent connection drops
+> - Missing media playback on cloud
+
 Join Storage Session enables video producing devices to join or create WebRTC sessions for real-time media ingestion through Amazon Kinesis Video Streams. For Master configurations, this allows devices to ingest both audio and video media while maintaining synchronized playback capabilities.
 
 In our implementation (Master participant only):
