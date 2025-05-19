@@ -45,6 +45,10 @@
 #define CONFIG_DYNAMIC_TICKLESS 0
 #endif
 
+#ifndef ENABLE_AMAZON_COMMON
+#define ENABLE_AMAZON_COMMON 1U
+#endif
+
 /* ---------- Memory options ---------- */
 /* MEM_ALIGNMENT: should be set to the alignment of the CPU for which
    lwIP is compiled. 4 byte alignment -> define MEM_ALIGNMENT to 4, 2
@@ -498,7 +502,7 @@ Certain platform allows computing and verifying the IP, UDP, TCP and ICMP checks
 /* Added by Realtek end */
 
 /* Extra options for lwip_v2.0.2 which should not affect lwip_v1.4.1 */
-#define LWIP_TCPIP_CORE_LOCKING         0
+#define LWIP_TCPIP_CORE_LOCKING         1
 #define LWIP_TCPIP_TIMEOUT              1
 #define LWIP_SO_RCVTIMEO                1
 #define LWIP_SOCKET_SET_ERRNO           0
