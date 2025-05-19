@@ -73,7 +73,7 @@ endif()
  
 # Include dependencies
 # Include coreHTTP
-include( ${REPO_ROOT_DIRECTORY}/libraries/coreHTTP/httpFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/coreHTTP.cmake )
 
 # Include sigV4
 include( ${REPO_ROOT_DIRECTORY}/libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk/sigv4FilePaths.cmake )
@@ -90,7 +90,6 @@ include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-stream
 # Suppress warnings for some Libraries
 file(GLOB_RECURSE WARNING_SUPPRESSED_SOURCES
     "${REPO_ROOT_DIRECTORY}/libraries/ambpro2_sdk/*.c"
-    "${REPO_ROOT_DIRECTORY}/libraries/coreHTTP/source/dependency/3rdparty/llhttp/src/llhttp.c"
 )
 
 set_source_files_properties(
@@ -143,7 +142,6 @@ list(
 
 set( webrtc_master_demo_src
      ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-     ${HTTP_SOURCES}
      ${SIGV4_SOURCES}
      ${WSLAY_SOURCE_FILES}
      ${SDP_SOURCES}
@@ -154,7 +152,6 @@ set( webrtc_master_demo_src
 
 set( webrtc_master_demo_include
      ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
-     ${HTTP_INCLUDE_PUBLIC_DIRS}
      ${SIGV4_INCLUDE_PUBLIC_DIRS}
      ${WSLAY_INCLUDE_DIRS}
      ${SDP_INCLUDE_PUBLIC_DIRS}
