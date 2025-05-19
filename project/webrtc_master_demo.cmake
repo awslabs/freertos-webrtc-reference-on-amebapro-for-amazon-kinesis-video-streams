@@ -170,11 +170,6 @@ if(BUILD_USRSCTP_LIBRARY)
           APPEND app_flags
           ENABLE_SCTP_DATA_CHANNEL=1
      )
-
-     list( 
-          APPEND webrtc_master_demo_include
-          ${DCEP_INCLUDE_PUBLIC_DIRS}
-     )
 else()
      list(
           APPEND app_flags

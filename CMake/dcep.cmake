@@ -11,10 +11,16 @@ file(
 set( DCEP_INCLUDE_PUBLIC_DIRS
      "${CMAKE_DCEP_DIRECTORY}/source/include" )
 
-add_library( dcep
-             ${DCEP_SOURCES} )
+add_library( dcep )
 
-target_include_directories( dcep PRIVATE
+target_sources( dcep
+    PRIVATE
+        ${DCEP_SOURCES}
+    PUBLIC
+        ${DCEP_INCLUDE_PUBLIC_DIRS}
+)
+
+target_include_directories( dcep PUBLIC
                             ${DCEP_INCLUDE_PUBLIC_DIRS} )
 
 target_link_libraries( dcep PRIVATE )
