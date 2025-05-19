@@ -79,7 +79,10 @@ include( ${REPO_ROOT_DIRECTORY}/libraries/coreHTTP/httpFilePaths.cmake )
 include( ${REPO_ROOT_DIRECTORY}/libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk/sigv4FilePaths.cmake )
 
 ## Include coreJSON
-include( ${REPO_ROOT_DIRECTORY}/libraries/coreJSON/jsonFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/coreJSON.cmake )
+
+## Include Signaling
+include( ${REPO_ROOT_DIRECTORY}/CMake/signaling.cmake )
 
 # Include signaling
 include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-signaling/signalingFilePaths.cmake )
@@ -142,8 +145,6 @@ set( webrtc_master_demo_src
      ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
      ${HTTP_SOURCES}
      ${SIGV4_SOURCES}
-     ${SIGNALING_SOURCES}
-     ${JSON_SOURCES}
      ${WSLAY_SOURCE_FILES}
      ${SDP_SOURCES}
      ${STUN_SOURCES}
@@ -155,8 +156,6 @@ set( webrtc_master_demo_include
      ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
      ${HTTP_INCLUDE_PUBLIC_DIRS}
      ${SIGV4_INCLUDE_PUBLIC_DIRS}
-     ${SIGNALING_INCLUDE_PUBLIC_DIRS}
-     ${JSON_INCLUDE_PUBLIC_DIRS}
      ${WSLAY_INCLUDE_DIRS}
      ${SDP_INCLUDE_PUBLIC_DIRS}
      ${STUN_INCLUDE_PUBLIC_DIRS}

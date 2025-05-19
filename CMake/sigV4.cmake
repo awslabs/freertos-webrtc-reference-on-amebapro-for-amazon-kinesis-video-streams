@@ -6,5 +6,5 @@ add_library( sigv4_config
              ${SIGV4_SOURCES} )
 
 target_include_directories( sigv4_config PRIVATE
-                            ${CMAKE_ROOT_DIRECTORY}/configs/sigv4
+                            ${REPO_ROOT_DIRECTORY}/configs/sigv4
                             ${SIGV4_INCLUDE_PUBLIC_DIRS} )
