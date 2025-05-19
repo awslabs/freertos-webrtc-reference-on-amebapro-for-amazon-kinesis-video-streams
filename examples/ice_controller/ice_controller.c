@@ -1249,7 +1249,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     StringUtilsResult_t stringResult;
     const char * pCandidateString;
-    size_t candidateStringLength;
+    size_t candidateStringLength = 0;
     const char * pCurr, * pTail, * pNext;
     size_t tokenLength;
     IceControllerCandidateDeserializerState_t deserializerState = ICE_CONTROLLER_CANDIDATE_DESERIALIZER_STATE_FOUNDATION;

@@ -641,50 +641,51 @@ int32_t DTLS_CreateCertificateFingerprint( const mbedtls_x509_crt * pCert,
         /* Empty else marker. */
     }
 
-    pMdInfo = mbedtls_md_info_from_type( MBEDTLS_MD_SHA256 );
-    if( pMdInfo == NULL )
+    if( retStatus == 0 )
     {
-        LogError( ( "invalid input, pMdInfo == NULL " ) );
-        retStatus = -1;
-    }
-    else
-    {
-        /* Empty else marker. */
-    }
-
-    sslRet = mbedtls_sha256_ret( pCert->raw.p,
-                                 pCert->raw.len,
-                                 fingerprint,
-                                 0 );
-    if( sslRet != 0 )
-    {
-        LogError( ( "Failed to calculate the SHA-256 checksum: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( sslRet ), mbedtlsLowLevelCodeOrDefault( sslRet ) ) );
-    }
-    else
-    {
-        /* Empty else marker. */
+        pMdInfo = mbedtls_md_info_from_type( MBEDTLS_MD_SHA256 );
+        if( pMdInfo == NULL )
+        {
+            LogError( ( "invalid input, pMdInfo == NULL " ) );
+            retStatus = -1;
+        }
     }
 
-    size = mbedtls_md_get_size( pMdInfo );
+    if( retStatus == 0 )
+    {
+        sslRet = mbedtls_sha256_ret( pCert->raw.p,
+                                     pCert->raw.len,
+                                     fingerprint,
+                                     0 );
+        if( sslRet != 0 )
+        {
+            LogError( ( "Failed to calculate the SHA-256 checksum: mbedTLSError= %s : %s.", mbedtlsHighLevelCodeOrDefault( sslRet ), mbedtlsLowLevelCodeOrDefault( sslRet ) ) );
+            retStatus = -1;
+        }
+    }
 
-    if( bufLen < 3 * size )
+    if( retStatus == 0 )
     {
-        LogError( ( "buffer to store fingerprint too small buffer: %i size: %li", bufLen, size ) );
-        retStatus = -1;
-    }
-    else
-    {
-        /* Empty else marker. */
+        size = mbedtls_md_get_size( pMdInfo );
+
+        if( bufLen < 3 * size )
+        {
+            LogError( ( "buffer to store fingerprint too small buffer: %i size: %li", bufLen, size ) );
+            retStatus = -1;
+        }
     }
 
-    for( i = 0; i < size; i++ )
+    if( retStatus == 0 )
     {
-        sprintf( pBuff,
-                 "%.2X:",
-                 fingerprint[i] );
-        pBuff += 3;
+        for( i = 0; i < size; i++ )
+        {
+            sprintf( pBuff,
+                     "%.2X:",
+                     fingerprint[i] );
+            pBuff += 3;
+        }
+        *( pBuff - 1 ) = '\0';
     }
-    *( pBuff - 1 ) = '\0';
 
     return retStatus;
 }
