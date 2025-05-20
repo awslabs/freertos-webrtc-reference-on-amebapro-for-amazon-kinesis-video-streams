@@ -159,5 +159,8 @@ set_source_files_properties(
 )
 
 if( ENABLE_STREAMING_LOOPBACK )
-     add_definitions(-DENABLE_STREAMING_LOOPBACK)
+     list(
+          APPEND app_flags
+          ENABLE_STREAMING_LOOPBACK
+     )
 endif()
