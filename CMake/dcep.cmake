@@ -1,4 +1,4 @@
-# This cmake file is used to include libwebsockets as static library.
+# This cmake file is used to include dcep as static library.
 set(CMAKE_DCEP_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/../libraries/components/amazon-kinesis-video-streams-dcep)
 
 # DCEP library source files.
