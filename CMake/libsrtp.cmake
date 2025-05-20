@@ -44,18 +44,18 @@ target_sources( ${libsrtp}
 )
 
 list(
-	APPEND libsrtp_flags
-     HAVE_CONFIG_H
+    APPEND libsrtp_flags
+    HAVE_CONFIG_H
 )
 
 target_compile_definitions(${libsrtp} PRIVATE ${libsrtp_flags})
 
 target_include_directories(
-	${libsrtp}
-	PUBLIC
-     ${LIBSRTP_INCLUDE_PUBLIC_DIRS}
-	${inc_path}
-	${sdk_root}/component/os/freertos/${freertos}/Source/portable/GCC/ARM_CM33_NTZ/non_secure
+    ${libsrtp}
+    PUBLIC
+    ${LIBSRTP_INCLUDE_PUBLIC_DIRS}
+    ${inc_path}
+    ${sdk_root}/component/os/freertos/${freertos}/Source/portable/GCC/ARM_CM33_NTZ/non_secure
 )
 
 ### add linked library ###

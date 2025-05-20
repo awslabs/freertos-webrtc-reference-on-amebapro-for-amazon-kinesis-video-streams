@@ -16,17 +16,17 @@ list(
     ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_cc_functions.c
     ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_crc32.c
     ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_indata.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_input.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_output.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_pcb.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_peeloff.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_sha1.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_ss_functions.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_sysctl.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_timer.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_userspace.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_usrreq.c
-	${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctputil.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_input.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_output.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_pcb.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_peeloff.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_sha1.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_ss_functions.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_sysctl.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_timer.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_userspace.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctp_usrreq.c
+    ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet/sctputil.c
 ###netinet6
     ${REPO_ROOT_DIRECTORY}/libraries/usrsctp/usrsctplib/netinet6/sctp6_usrreq.c
 
@@ -56,12 +56,12 @@ target_sources( ${usrsctp}
 )
 
 list(
-	APPEND usrsctp_flags
-	CONFIG_BUILD_RAM=1 
-	CONFIG_BUILD_LIB=1 
-	CONFIG_PLATFORM_8735B
-	CONFIG_RTL8735B_PLATFORM=1
-	CONFIG_SYSTEM_TIME64=1
+    APPEND usrsctp_flags
+    CONFIG_BUILD_RAM=1 
+    CONFIG_BUILD_LIB=1 
+    CONFIG_PLATFORM_8735B
+    CONFIG_RTL8735B_PLATFORM=1
+    CONFIG_SYSTEM_TIME64=1
     
     __Userspace__
     SCTP_SIMPLE_ALLOCATOR
