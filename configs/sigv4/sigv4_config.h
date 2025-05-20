@@ -36,8 +36,6 @@
 #ifndef SIGV4_CONFIG_H_
 #define SIGV4_CONFIG_H_
 
-#include "logging.h"
-
 #define SIGV4_PROCESSING_BUFFER_LENGTH    2048U
 
 #endif /* ifndef SIGV4_CONFIG_H_ */

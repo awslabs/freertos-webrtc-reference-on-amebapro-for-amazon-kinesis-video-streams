@@ -49,7 +49,6 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/examples/networking/networking_utils"
      "${REPO_ROOT_DIRECTORY}/examples/logging"
      "${REPO_ROOT_DIRECTORY}/configs/mbedtls"
-     "${REPO_ROOT_DIRECTORY}/configs/sigv4"
      "${REPO_ROOT_DIRECTORY}/examples/message_queue"
      "${REPO_ROOT_DIRECTORY}/examples/base64"
      "${REPO_ROOT_DIRECTORY}/examples/sdp_controller"
@@ -76,16 +75,13 @@ endif()
 include( ${REPO_ROOT_DIRECTORY}/CMake/coreHTTP.cmake )
 
 # Include sigV4
-include( ${REPO_ROOT_DIRECTORY}/libraries/crypto/SigV4-for-AWS-IoT-embedded-sdk/sigv4FilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/sigV4.cmake )
 
 ## Include coreJSON
 include( ${REPO_ROOT_DIRECTORY}/CMake/coreJSON.cmake )
 
 ## Include Signaling
 include( ${REPO_ROOT_DIRECTORY}/CMake/signaling.cmake )
-
-# Include signaling
-include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-signaling/signalingFilePaths.cmake )
 
 # Suppress warnings for some Libraries
 file(GLOB_RECURSE WARNING_SUPPRESSED_SOURCES
@@ -131,9 +127,6 @@ include( ${REPO_ROOT_DIRECTORY}/CMake/ice.cmake )
 # Include libsrtp
 include( ${REPO_ROOT_DIRECTORY}/CMake/libsrtp.cmake )
 
-## Include sigV4
-include( ${REPO_ROOT_DIRECTORY}/CMake/sigV4.cmake )
-
 list(
 	APPEND app_flags
      HAVE_ARPA_INET_H
@@ -141,12 +134,10 @@ list(
 
 set( webrtc_master_demo_src
      ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-     ${SIGV4_SOURCES}
      ${WSLAY_SOURCE_FILES} )
 
 set( webrtc_master_demo_include
      ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
-     ${SIGV4_INCLUDE_PUBLIC_DIRS}
      ${WSLAY_INCLUDE_DIRS} )
 
 if(BUILD_USRSCTP_LIBRARY)
