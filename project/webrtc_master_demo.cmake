@@ -114,7 +114,7 @@ set( WSLAY_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/configs/wslay" )
 
 # Include SDP
-include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-sdp/sdpFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/sdp.cmake )
 
 # Include STUN
 include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-stun/stunFilePaths.cmake )
@@ -136,7 +136,6 @@ include( ${REPO_ROOT_DIRECTORY}/CMake/sigV4.cmake )
 
 list(
 	APPEND app_flags
-     SDP_DO_NOT_USE_CUSTOM_CONFIG
      HAVE_ARPA_INET_H
 )
 
@@ -144,7 +143,6 @@ set( webrtc_master_demo_src
      ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
      ${SIGV4_SOURCES}
      ${WSLAY_SOURCE_FILES}
-     ${SDP_SOURCES}
      ${STUN_SOURCES}
      ${ICE_SOURCES}
      ${RTP_SOURCES}
@@ -154,7 +152,6 @@ set( webrtc_master_demo_include
      ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
      ${SIGV4_INCLUDE_PUBLIC_DIRS}
      ${WSLAY_INCLUDE_DIRS}
-     ${SDP_INCLUDE_PUBLIC_DIRS}
      ${STUN_INCLUDE_PUBLIC_DIRS}
      ${ICE_INCLUDE_PUBLIC_DIRS}
      ${RTP_INCLUDE_PUBLIC_DIRS}
