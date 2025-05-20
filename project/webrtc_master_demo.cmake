@@ -95,19 +95,7 @@ set_source_files_properties(
 )
 
 # Include wslay
-file(
-  GLOB
-  WSLAY_SOURCE_FILES
-  "${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/*.c" )
-
-configure_file(${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/includes/wslay/wslayver.h.in
-               ${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/includes/wslay/wslayver.h @ONLY)
-
-set( WSLAY_INCLUDE_DIRS
-     "${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/"
-     "${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/includes"
-     "${REPO_ROOT_DIRECTORY}/libraries/wslay/lib/includes/wslay"
-     "${REPO_ROOT_DIRECTORY}/configs/wslay" )
+include( ${REPO_ROOT_DIRECTORY}/CMake/wslay.cmake )
 
 # Include SDP
 include( ${REPO_ROOT_DIRECTORY}/CMake/sdp.cmake )
@@ -127,18 +115,11 @@ include( ${REPO_ROOT_DIRECTORY}/CMake/ice.cmake )
 # Include libsrtp
 include( ${REPO_ROOT_DIRECTORY}/CMake/libsrtp.cmake )
 
-list(
-	APPEND app_flags
-     HAVE_ARPA_INET_H
-)
-
 set( webrtc_master_demo_src
-     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
-     ${WSLAY_SOURCE_FILES} )
+     ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES} )
 
 set( webrtc_master_demo_include
-     ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
-     ${WSLAY_INCLUDE_DIRS} )
+     ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS} )
 
 if(BUILD_USRSCTP_LIBRARY)
      # Include DCEP
