@@ -117,13 +117,13 @@ set( WSLAY_INCLUDE_DIRS
 include( ${REPO_ROOT_DIRECTORY}/CMake/sdp.cmake )
 
 # Include STUN
-include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-stun/stunFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/stun.cmake )
 
 # Include RTP
-include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtp/rtpFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/rtp.cmake )
 
 # Include RTCP
-include( ${REPO_ROOT_DIRECTORY}/libraries/components/amazon-kinesis-video-streams-rtcp/rtcpFilePaths.cmake )
+include( ${REPO_ROOT_DIRECTORY}/CMake/rtcp.cmake )
 
 # Include ICE
 include( ${REPO_ROOT_DIRECTORY}/CMake/ice.cmake )
@@ -142,20 +142,12 @@ list(
 set( webrtc_master_demo_src
      ${WEBRTC_APPLICATION_MASTER_SOURCE_FILES}
      ${SIGV4_SOURCES}
-     ${WSLAY_SOURCE_FILES}
-     ${STUN_SOURCES}
-     ${ICE_SOURCES}
-     ${RTP_SOURCES}
-     ${RTCP_SOURCES} )
+     ${WSLAY_SOURCE_FILES} )
 
 set( webrtc_master_demo_include
      ${WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS}
      ${SIGV4_INCLUDE_PUBLIC_DIRS}
-     ${WSLAY_INCLUDE_DIRS}
-     ${STUN_INCLUDE_PUBLIC_DIRS}
-     ${ICE_INCLUDE_PUBLIC_DIRS}
-     ${RTP_INCLUDE_PUBLIC_DIRS}
-     ${RTCP_INCLUDE_PUBLIC_DIRS} )
+     ${WSLAY_INCLUDE_DIRS} )
 
 if(BUILD_USRSCTP_LIBRARY)
      # Include DCEP
