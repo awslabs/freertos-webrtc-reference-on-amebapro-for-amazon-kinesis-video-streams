@@ -1062,6 +1062,29 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
          */
         ( void ) Ice_CloseCandidate( &pCtx->iceContext, pSocketContext->pLocalCandidate );
         IceControllerNet_FreeSocketContext( pCtx, pSocketContext );
+
+        if( pSocketContext == pCtx->pNominatedSocketContext )
+        {
+            /* Disconnecting nominated socket connection, closing. */
+            LogWarn( ( "Unable to send packet through nominated socket, closing session: %.*s",
+                     ( int ) pCtx->iceContext.creds.combinedUsernameLength,
+                     pCtx->iceContext.creds.pCombinedUsername ) );
+
+            /* Notify peer connection for closing the connection. */
+            if( pCtx->onIceEventCallbackFunc )
+            {
+                pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
+                                              NULL );
+                /* Re-set the timer. */
+                IceController_UpdateTimerInterval( pCtx,
+                                                   ICE_CONTROLLER_CLOSING_INTERVAL_MS );
+            }
+            else
+            {
+                LogError( ( "There is no ICE event callback function set." ) );
+            }
+        }
     }
 
     return ret;
