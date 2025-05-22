@@ -298,8 +298,8 @@ static IceControllerResult_t CreateSocketContextTcp( IceControllerContext_t * pC
                                                pRemoteIpPos,
                                                pConnectEndpoint->transportAddress.port,
                                                &credentials,
-                                               1,
-                                               1,
+                                               0U,
+                                               0U,
                                                TLS_CONNECT_NON_BLOCKING_HANDSHAKE );
 
         if( xNetworkStatus == TLS_TRANSPORT_HANDSHAKE_IN_PROGRESS )

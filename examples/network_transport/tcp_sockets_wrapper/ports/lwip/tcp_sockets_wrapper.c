@@ -27,6 +27,7 @@
 #include "lwip/sockets.h"
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
+#include "errno.h"
 
 /* TCP Sockets Wrapper include.*/
 #include "tcp_sockets_wrapper.h"
@@ -57,6 +58,7 @@ BaseType_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     BaseType_t xRet = TCP_SOCKETS_ERRNO_NONE;
     struct addrinfo xHints, * pxAddrList, * pxCur;
     char xPortStr[6];
+    int fcntlFlags = 0;
 
     memset( &xHints, 0, sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
@@ -113,8 +115,30 @@ BaseType_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
-        setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
-        setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
+        if( ( receiveTimeoutMs == 0 ) &&
+            ( sendTimeoutMs == 0 ) )
+        {
+            fcntlFlags = fcntl( xFd, F_GETFL, 0 );
+            if( fcntlFlags < 0 )
+            {
+                LogError( ( "fcntl() failed with errno: %d", errno ) );
+                xRet = TCP_SOCKETS_ERRNO_ERROR;
+            }
+            else
+            {
+                fcntlFlags |= O_NONBLOCK;
+                if( fcntl( xFd, F_SETFL, fcntlFlags ) < 0 )
+                {
+                    LogError( ( "fcntl() failed with errno: %d", errno ) );
+                    xRet = TCP_SOCKETS_ERRNO_ERROR;
+                }
+            }
+        }
+        else
+        {
+            setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
+            setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
+        }
     }
 
     return xRet;
