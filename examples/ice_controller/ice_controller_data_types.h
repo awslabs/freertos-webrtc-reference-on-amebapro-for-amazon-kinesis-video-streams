@@ -31,7 +31,6 @@ extern "C" {
 #include "lwip/sockets.h"
 #include "transport_mbedtls.h"
 #include "transport_dtls_mbedtls.h"
-#include "transport_interface.h"
 
 /* FreeRTOS includes. */
 #include "semphr.h"

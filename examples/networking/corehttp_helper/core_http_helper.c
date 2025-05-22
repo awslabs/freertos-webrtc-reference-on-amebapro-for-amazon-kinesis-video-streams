@@ -39,6 +39,20 @@
 #define NETWORKING_COREHTTP_STRING_CONTENT_LENGTH "content-length"
 #define NETWORKING_COREHTTP_STRING_IOT_THINGNAME "x-amzn-iot-thingname"
 
+static int32_t SendTlsPacket( NetworkContext_t * pNetworkContext,
+                              const void * pBuffer,
+                              size_t bytesToSend )
+{
+    return TLS_FreeRTOS_send( ( TlsNetworkContext_t * ) pNetworkContext, pBuffer, bytesToSend );
+}
+
+static int32_t RecvTlsPacket( NetworkContext_t * pNetworkContext,
+                              void * pBuffer,
+                              size_t bytesToRecv )
+{
+    return TLS_FreeRTOS_recv( ( TlsNetworkContext_t * ) pNetworkContext, pBuffer, bytesToRecv );
+}
+
 static uint32_t GetCurrentTimeMilisec( void )
 {
     uint32_t timeSeconds, timeMilliseconds;
@@ -67,8 +81,8 @@ HttpResult_t Http_Init( NetworkingCorehttpContext_t * pHttpCtx )
 
         /* Set transport interface. */
         pHttpCtx->xTransportInterface.pNetworkContext = ( NetworkContext_t * ) &pHttpCtx->xTlsNetworkContext;
-        pHttpCtx->xTransportInterface.send = TLS_FreeRTOS_send;
-        pHttpCtx->xTransportInterface.recv = TLS_FreeRTOS_recv;
+        pHttpCtx->xTransportInterface.send = SendTlsPacket;
+        pHttpCtx->xTransportInterface.recv = RecvTlsPacket;
 
         /* Set the pParams member of the network context with desired transport. */
         pHttpCtx->xTlsNetworkContext.pParams = &pHttpCtx->xTlsTransportParams;

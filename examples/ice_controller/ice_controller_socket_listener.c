@@ -108,7 +108,7 @@ static int32_t RecvPacketTls( IceControllerSocketContext_t * pSocketContext,
     int32_t ret;
 
     memcpy( pRemoteEndpoint, &( pSocketContext->pIceServer->iceEndpoint ), sizeof( IceEndpoint_t ) );
-    ret = TLS_FreeRTOS_recv( ( NetworkContext_t * ) &pSocketContext->tlsSession.xTlsNetworkContext,
+    ret = TLS_FreeRTOS_recv( &pSocketContext->tlsSession.xTlsNetworkContext,
                              pBuffer,
                              bufferSize );
 

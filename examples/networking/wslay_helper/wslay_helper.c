@@ -68,6 +68,20 @@ static void HandleWslayDataMessage( void * pUserData,
                                     const uint8_t * pData,
                                     size_t dataLength );
 
+static int32_t SendTlsPacket( NetworkContext_t * pNetworkContext,
+                              const void * pBuffer,
+                              size_t bytesToSend )
+{
+    return TLS_FreeRTOS_send( ( TlsNetworkContext_t * ) pNetworkContext, pBuffer, bytesToSend );
+}
+
+static int32_t RecvTlsPacket( NetworkContext_t * pNetworkContext,
+                              void * pBuffer,
+                              size_t bytesToRecv )
+{
+    return TLS_FreeRTOS_recv( ( TlsNetworkContext_t * ) pNetworkContext, pBuffer, bytesToRecv );
+}
+
 static ssize_t WslaySendCallback( wslay_event_context_ptr pCtx,
                                   const uint8_t * pData,
                                   size_t dataLength,
@@ -1262,8 +1276,8 @@ WebsocketResult_t Websocket_Init( NetworkingWslayContext_t * pWebsocketCtx,
 
         /* Set transport interface. */
         pWebsocketCtx->xTransportInterface.pNetworkContext = ( NetworkContext_t * ) &pWebsocketCtx->xTlsNetworkContext;
-        pWebsocketCtx->xTransportInterface.send = TLS_FreeRTOS_send;
-        pWebsocketCtx->xTransportInterface.recv = TLS_FreeRTOS_recv;
+        pWebsocketCtx->xTransportInterface.send = SendTlsPacket;
+        pWebsocketCtx->xTransportInterface.recv = RecvTlsPacket;
 
         /* Set the pParams member of the network context with desired transport. */
         pWebsocketCtx->xTlsNetworkContext.pParams = &pWebsocketCtx->xTlsTransportParams;

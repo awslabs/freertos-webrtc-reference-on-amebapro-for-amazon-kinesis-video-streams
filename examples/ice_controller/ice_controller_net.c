@@ -428,7 +428,7 @@ static IceControllerResult_t SendSocketPacket( IceControllerSocketContext_t * pS
         }
         else if( pSocketContext->socketType == ICE_CONTROLLER_SOCKET_TYPE_TLS )
         {
-            sentBytes = TLS_FreeRTOS_send( ( NetworkContext_t * ) &pSocketContext->tlsSession.xTlsNetworkContext,
+            sentBytes = TLS_FreeRTOS_send( &pSocketContext->tlsSession.xTlsNetworkContext,
                                            pBuffer + sendTotalBytes,
                                            length - sendTotalBytes );
         }
