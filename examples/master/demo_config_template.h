@@ -82,7 +82,11 @@
 #endif
 
 /* Video format setting. */
-#define USE_H265 0
+#define USE_VIDEO_CODEC_H264 0
+#define USE_VIDEO_CODEC_H265 1
+#if ( USE_VIDEO_CODEC_H264 + USE_VIDEO_CODEC_H265 ) != 1
+    #error only one of video codec should be set
+#endif
 
 /* Join Storage Session setting. */
 #ifndef JOIN_STORAGE_SESSION
