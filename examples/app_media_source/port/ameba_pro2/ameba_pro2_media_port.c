@@ -250,7 +250,7 @@ static int HandleModuleFrameHook( void * p,
             frame.freeData = 1;
             frame.timestampUs = NetworkingUtils_GetCurrentTimeUs( &pInputItem->timestamp );
 
-            if( pInputItem->type == AV_CODEC_ID_H264 || pInputItem->type == AV_CODEC_ID_H265 )
+            if( ( pInputItem->type == AV_CODEC_ID_H264 ) || ( pInputItem->type == AV_CODEC_ID_H265 ) )
             {
                 if( pCtx->onVideoFrameReadyToSendFunc )
                 {
