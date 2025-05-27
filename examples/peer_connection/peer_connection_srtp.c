@@ -32,6 +32,7 @@
 #include "peer_connection_codec_helper.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 
 /* At write frame, we reserve 2 bytes at the beginning of payload buffer for re-transmission if RTX is enabled. */
@@ -48,10 +49,7 @@
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 #define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
-
-#define PEER_CONNECTION_SRTP_H264_MAX_NALUS_IN_A_FRAME        ( 64 )
 #define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
-
 #define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
 
 /*-----------------------------------------------------------*/
@@ -97,10 +95,12 @@ static PeerConnectionResult_t OnJitterBufferFrameReady( void * pCustomContext,
         {
             memset( &frame, 0, sizeof( PeerConnectionFrame_t ) );
             frame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
-            frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate, rtpTimestamp );
+            frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate,
+                                                                                          rtpTimestamp );
             frame.pData = pSrtpReceiver->frameBuffer;
             frame.dataLength = frameBufferLength;
-            pSrtpReceiver->onFrameReadyCallbackFunc( pSrtpReceiver->pOnFrameReadyCallbackCustomContext, &frame );
+            pSrtpReceiver->onFrameReadyCallbackFunc( pSrtpReceiver->pOnFrameReadyCallbackCustomContext,
+                                                     &frame );
         }
     }
 
@@ -179,7 +179,12 @@ PeerConnectionResult_t PeerConnectionSrtp_ConstructSrtpPacket( PeerConnectionSes
     {
         if( pSession->srtpTransmitSession != NULL )
         {
-            errorStatus = srtp_protect( pSession->srtpTransmitSession, pOutputSrtpPacket, rtpBufferLength, pOutputSrtpPacket, pOutputSrtpPacketLength, 0 );
+            errorStatus = srtp_protect( pSession->srtpTransmitSession,
+                                        pOutputSrtpPacket,
+                                        rtpBufferLength,
+                                        pOutputSrtpPacket,
+                                        pOutputSrtpPacketLength,
+                                        0 );
             if( errorStatus != srtp_err_status_ok )
             {
                 LogError( ( "Fail to encrypt Tx SRTP packet, errorStatus: %d", errorStatus ) );
@@ -262,7 +267,8 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         receivePolicy.ssrc.type = ssrc_any_inbound;
         receivePolicy.next = NULL;
 
-        errorStatus = srtp_create( &( pSession->srtpReceiveSession ), &receivePolicy );
+        errorStatus = srtp_create( &( pSession->srtpReceiveSession ),
+                                   &receivePolicy );
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to create Rx SRTP session, errorStatus: %d", errorStatus ) );
@@ -280,7 +286,8 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         transmitPolicy.ssrc.type = ssrc_any_outbound;
         transmitPolicy.next = NULL;
 
-        errorStatus = srtp_create( &( pSession->srtpTransmitSession ), &transmitPolicy );
+        errorStatus = srtp_create( &( pSession->srtpTransmitSession ),
+                                   &transmitPolicy );
         if( errorStatus != srtp_err_status_ok )
         {
             LogError( ( "Fail to create Tx SRTP session, errorStatus: %d", errorStatus ) );
@@ -469,7 +476,7 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
         /* Clean up Video SRTP Sender */
         if( ( pSession->videoSrtpSender.senderMutex != NULL ) &&
             ( xSemaphoreTake( pSession->videoSrtpSender.senderMutex,
-                            portMAX_DELAY ) == pdTRUE ) )
+                              portMAX_DELAY ) == pdTRUE ) )
         {
             PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
             xSemaphoreGive( pSession->videoSrtpSender.senderMutex );

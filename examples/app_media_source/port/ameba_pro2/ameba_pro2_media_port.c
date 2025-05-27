@@ -74,7 +74,7 @@ extern int max_skb_buf_num;
 #define MEDIA_PORT_V1_BPS 512 * 1024
 #define MEDIA_PORT_V1_RCMODE 2 // 1: CBR, 2: VBR
 
-#if USE_H265
+#if USE_VIDEO_CODEC_H265
 #define MEDIA_PORT_VIDEO_TYPE VIDEO_HEVC
 #define MEDIA_PORT_VIDEO_CODEC AV_CODEC_ID_H265
 #else
@@ -166,7 +166,7 @@ static opusc_params_t opuscParams = {
     .bit_length = 16,    // 16 recommand
     .complexity = 5,     // 0~10
     .bitrate = 25000,    // default 25000
-    .use_framesize = 20, // 10 // needs to the same or bigger than AUDIO_DMA_PAGE_SIZE/(sample_rate/1000)/2 but less than 60
+    .use_framesize = 40, // 10 // needs to the same or bigger than AUDIO_DMA_PAGE_SIZE/(sample_rate/1000)/2 but less than 60
     .enable_vbr = 1,
     .vbr_constraint = 0,
     .packetLossPercentage = 0,
@@ -250,7 +250,7 @@ static int HandleModuleFrameHook( void * p,
             frame.freeData = 1;
             frame.timestampUs = NetworkingUtils_GetCurrentTimeUs( &pInputItem->timestamp );
 
-            if( pInputItem->type == AV_CODEC_ID_H264 )
+            if( ( pInputItem->type == AV_CODEC_ID_H264 ) || ( pInputItem->type == AV_CODEC_ID_H265 ) )
             {
                 if( pCtx->onVideoFrameReadyToSendFunc )
                 {
@@ -304,11 +304,11 @@ static int ControlModuleHook( void * p,
         case CMD_KVS_WEBRTC_START:
             /* If loopback is enabled, we don't need the camera to provide frames.
              * Instead, we loopback the received frames. */
-#ifdef ENABLE_STREAMING_LOOPBACK
+            #ifdef ENABLE_STREAMING_LOOPBACK
             pCtx->mediaStart = 0;
-#else
+            #else
             pCtx->mediaStart = 1;
-#endif
+            #endif
             break;
         case CMD_KVS_WEBRTC_STOP:
             pCtx->mediaStart = 0;
@@ -377,10 +377,10 @@ void AppMediaSourcePort_Destroy( void )
     siso_pause( pSisoAudioA1 );
     miso_pause( pMisoWebrtc,
                 MM_OUTPUT );
-#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
     siso_pause( pSisoWebrtcA2 );
     siso_pause( pSisoAudioA2 );
-#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     // Stop modules
     mm_module_ctrl( pWebrtcMmContext,
@@ -396,26 +396,26 @@ void AppMediaSourcePort_Destroy( void )
     // Delete linkers
     pSisoAudioA1 = siso_delete( pSisoAudioA1 );
     pMisoWebrtc = miso_delete( pMisoWebrtc );
-#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
     pSisoWebrtcA2 = siso_delete( pSisoWebrtcA2 );
     pSisoAudioA2 = siso_delete( pSisoAudioA2 );
-#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     // Close modules
     pWebrtcMmContext = mm_module_close( pWebrtcMmContext );
     pVideoContext = mm_module_close( pVideoContext );
     pAudioContext = mm_module_close( pAudioContext );
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+    #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
     pG711eContext = mm_module_close( pG711eContext );
-#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
     pG711dContext = mm_module_close( pG711dContext );
-#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
-#elif AUDIO_OPUS
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    #elif AUDIO_OPUS
     pOpuscContext = mm_module_close( pOpuscContext );
-#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
     pOpusdContext = mm_module_close( pOpusdContext );
-#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
-#endif
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    #endif
 
     // Video Deinit
     video_deinit();
@@ -483,11 +483,11 @@ int32_t AppMediaSourcePort_Init( void )
         pAudioContext = mm_module_open( &audio_module );
         if( pAudioContext )
         {
-#if !USE_DEFAULT_AUDIO_SET
+            #if !USE_DEFAULT_AUDIO_SET
             mm_module_ctrl( pAudioContext,
                             CMD_AUDIO_SET_PARAMS,
                             ( int )&audioParams );
-#endif
+            #endif
             mm_module_ctrl( pAudioContext,
                             MM_CMD_SET_QUEUE_LEN,
                             6 );
@@ -507,7 +507,7 @@ int32_t AppMediaSourcePort_Init( void )
 
     if( ret == 0 )
     {
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+        #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
         pG711eContext = mm_module_open( &g711_module );
         if( pG711eContext )
         {
@@ -529,7 +529,7 @@ int32_t AppMediaSourcePort_Init( void )
             LogError( ( "G711 open fail" ) );
             ret = -1;
         }
-#elif AUDIO_OPUS
+        #elif AUDIO_OPUS
         pOpuscContext = mm_module_open( &opusc_module );
         if( pOpuscContext )
         {
@@ -551,7 +551,7 @@ int32_t AppMediaSourcePort_Init( void )
             LogError( ( "OPUSC open fail" ) );
             ret = -1;
         }
-#endif
+        #endif
     }
 
     if( ret == 0 )
@@ -563,12 +563,12 @@ int32_t AppMediaSourcePort_Init( void )
                        MMIC_CMD_ADD_INPUT,
                        ( uint32_t )pAudioContext,
                        0 );
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
             siso_ctrl( pSisoAudioA1,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pG711eContext,
                        0 );
-#elif AUDIO_OPUS
+            #elif AUDIO_OPUS
             siso_ctrl( pSisoAudioA1,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pOpuscContext,
@@ -577,7 +577,7 @@ int32_t AppMediaSourcePort_Init( void )
                        MMIC_CMD_SET_STACKSIZE,
                        24 * 1024,
                        0 );
-#endif
+            #endif
             siso_start( pSisoAudioA1 );
         }
         else
@@ -592,27 +592,27 @@ int32_t AppMediaSourcePort_Init( void )
         pMisoWebrtc = miso_create();
         if( pMisoWebrtc )
         {
-#if defined( configENABLE_TRUSTZONE ) && ( configENABLE_TRUSTZONE == 1 )
+            #if defined( configENABLE_TRUSTZONE ) && ( configENABLE_TRUSTZONE == 1 )
             miso_ctrl( pMisoWebrtc,
                        MMIC_CMD_SET_SECURE_CONTEXT,
                        1,
                        0 );
-#endif
+            #endif
             miso_ctrl( pMisoWebrtc,
                        MMIC_CMD_ADD_INPUT0,
                        ( uint32_t )pVideoContext,
                        0 );
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
             miso_ctrl( pMisoWebrtc,
                        MMIC_CMD_ADD_INPUT1,
                        ( uint32_t )pG711eContext,
                        0 );
-#elif AUDIO_OPUS
+            #elif AUDIO_OPUS
             miso_ctrl( pMisoWebrtc,
                        MMIC_CMD_ADD_INPUT1,
                        ( uint32_t )pOpuscContext,
                        0 );
-#endif
+            #endif
             miso_ctrl( pMisoWebrtc,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pWebrtcMmContext,
@@ -626,7 +626,7 @@ int32_t AppMediaSourcePort_Init( void )
         }
     }
 
-#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
     if( ret == 0 )
     {
         #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
@@ -651,7 +651,7 @@ int32_t AppMediaSourcePort_Init( void )
             LogError( ( "G711 open fail" ) );
             ret = -1;
         }
-#elif AUDIO_OPUS
+        #elif AUDIO_OPUS
         pOpusdContext = mm_module_open( &opusd_module );
         if( pOpusdContext )
         {
@@ -673,7 +673,7 @@ int32_t AppMediaSourcePort_Init( void )
             LogError( ( "OPUSD open fail" ) );
             ret = -1;
         }
-#endif
+        #endif
     }
 
     if( ret == 0 )
@@ -685,12 +685,12 @@ int32_t AppMediaSourcePort_Init( void )
                        MMIC_CMD_ADD_INPUT,
                        ( uint32_t )pWebrtcMmContext,
                        0 );
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
             siso_ctrl( pSisoWebrtcA2,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pG711dContext,
                        0 );
-#elif AUDIO_OPUS
+            #elif AUDIO_OPUS
             siso_ctrl( pSisoWebrtcA2,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pOpusdContext,
@@ -699,7 +699,7 @@ int32_t AppMediaSourcePort_Init( void )
                        MMIC_CMD_SET_STACKSIZE,
                        24 * 1024,
                        0 );
-#endif
+            #endif
             siso_start( pSisoWebrtcA2 );
         }
         else
@@ -714,17 +714,17 @@ int32_t AppMediaSourcePort_Init( void )
         pSisoAudioA2 = siso_create();
         if( pSisoAudioA2 )
         {
-#if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
             siso_ctrl( pSisoAudioA2,
                        MMIC_CMD_ADD_INPUT,
                        ( uint32_t )pG711dContext,
                        0 );
-#elif AUDIO_OPUS
+            #elif AUDIO_OPUS
             siso_ctrl( pSisoAudioA2,
                        MMIC_CMD_ADD_INPUT,
                        ( uint32_t )pOpusdContext,
                        0 );
-#endif
+            #endif
             siso_ctrl( pSisoAudioA2,
                        MMIC_CMD_ADD_OUTPUT,
                        ( uint32_t )pAudioContext,
@@ -737,7 +737,7 @@ int32_t AppMediaSourcePort_Init( void )
             ret = -1;
         }
     }
-#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     return ret;
 }

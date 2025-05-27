@@ -25,12 +25,14 @@
 
 #define DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND ( 3 )
 
-// Considering 4 Mbps for 720p (which is what our samples use). This is for H.264.
-// The value could be different for other codecs.
-#define DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE ( 4 * 1024 * 1024 )
+/* Considering 1.4 Mbps for 720p (which is what our samples use). This is for H.264.
+ * For H.265, we're using a lower bit rate of about 462 Kbps.
+ * The value could be different for other codecs. */
+#define TRANSCEIVER_H264_VIDEO_BIT_RATE ( 1.4 * 1024 * 1024 )
+#define TRANSCEIVER_H265_VIDEO_BIT_RATE ( 462 * 1024 )
 
-// For opus, the bitrate could be between 6 Kbps to 510 Kbps
-#define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 510 * 1024 )
+/* For opus, the bitrate could be between 6 Kbps to 1000 Kbps  */
+#define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 1000 * 1024 )
 
 #define DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID "myKvsVideoStream"
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
@@ -478,10 +480,20 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
                 sizeof( Transceiver_t ) );
         pVideoTranceiver->trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
         pVideoTranceiver->direction = TRANSCEIVER_TRACK_DIRECTION_SENDRECV;
-        TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap,
-                                  TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+        #if USE_VIDEO_CODEC_H265
+        {
+            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_H265_BIT );
+            pVideoTranceiver->rollingbufferBitRate = TRANSCEIVER_H265_VIDEO_BIT_RATE;
+        }
+        #else
+        {
+            TRANSCEIVER_ENABLE_CODEC( pVideoTranceiver->codecBitMap,
+                                      TRANSCEIVER_RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_BIT );
+            pVideoTranceiver->rollingbufferBitRate = TRANSCEIVER_H264_VIDEO_BIT_RATE;
+        }
+        #endif
         pVideoTranceiver->rollingbufferDurationSec = DEFAULT_TRANSCEIVER_ROLLING_BUFFER_DURACTION_SECOND;
-        pVideoTranceiver->rollingbufferBitRate = DEFAULT_TRANSCEIVER_VIDEO_BIT_RATE;
         strncpy( pVideoTranceiver->streamId,
                  DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID,
                  sizeof( pVideoTranceiver->streamId ) );

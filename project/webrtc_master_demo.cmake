@@ -86,6 +86,7 @@ include( ${REPO_ROOT_DIRECTORY}/CMake/signaling.cmake )
 # Suppress warnings for some Libraries
 file(GLOB_RECURSE WARNING_SUPPRESSED_SOURCES
     "${REPO_ROOT_DIRECTORY}/libraries/ambpro2_sdk/*.c"
+    "${REPO_ROOT_DIRECTORY}/libraries/usrsctp/*.c"
 )
 
 set_source_files_properties(

@@ -23,6 +23,7 @@
 #include "opus_depacketizer.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "FreeRTOS.h"
 
@@ -382,6 +383,12 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         {
             pJitterBuffer->getPacketPropertyFunc = PeerConnectionG711Helper_GetG711PacketProperty;
             pJitterBuffer->fillFrameFunc = PeerConnectionG711Helper_FillFrameG711;
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( codec,
+                                               TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+        {
+            pJitterBuffer->getPacketPropertyFunc = PeerConnectionH265Helper_GetH265PacketProperty;
+            pJitterBuffer->fillFrameFunc = PeerConnectionH265Helper_FillFrameH265;
         }
         else
         {

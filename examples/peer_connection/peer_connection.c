@@ -31,13 +31,14 @@
 #include "peer_connection_codec_helper.h"
 #include "peer_connection_g711_helper.h"
 #include "peer_connection_h264_helper.h"
+#include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 #include "networking_utils.h"
 
 #include "lwip/sockets.h"
 
 #if ENABLE_SCTP_DATA_CHANNEL
-    #include "peer_connection_sctp.h"
+#include "peer_connection_sctp.h"
 #endif
 
 
@@ -285,7 +286,8 @@ static void OnCloseSessionTimerExpire( void * pParameter )
                                           0 );
 
         /* Wake peer connection session to free resources. */
-        uxBits = xEventGroupSetBits( pSession->startupBarrier, PEER_CONNECTION_START_UP_BARRIER_BIT );
+        uxBits = xEventGroupSetBits( pSession->startupBarrier,
+                                     PEER_CONNECTION_START_UP_BARRIER_BIT );
         /* Since we configure xClearBitOnExit while waiting, the return value might be cleared automatically.
          * Thus we don't check return value here. */
         ( void ) uxBits;
@@ -861,7 +863,7 @@ static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession )
 static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession )
 {
     uint8_t i;
-    TimerControllerResult_t retTimer;
+    TimerControllerResult_t retTimer = TIMER_CONTROLLER_RESULT_OK;
 
     for( i = 0; i < PEER_CONNECTION_TRANSCEIVER_MAX_COUNT; i++ )
     {
@@ -993,7 +995,8 @@ static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession )
 
     if( ret == 0 )
     {
-        IceController_HandleEvent( &pSession->iceControllerContext, ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE );
+        IceController_HandleEvent( &pSession->iceControllerContext,
+                                   ICE_CONTROLLER_EVENT_DTLS_HANDSHAKE_DONE );
     }
 
     if( ret != 0 )
@@ -1582,7 +1585,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Initialize other modules. */
-        ret = InitializeIceController( pSession, pSessionConfig );
+        ret = InitializeIceController( pSession,
+                                       pSessionConfig );
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -1873,7 +1877,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     {
         pSession->state = PEER_CONNECTION_SESSION_STATE_FIND_CONNECTION;
 
-        uxBits = xEventGroupSetBits( pSession->startupBarrier, PEER_CONNECTION_START_UP_BARRIER_BIT );
+        uxBits = xEventGroupSetBits( pSession->startupBarrier,
+                                     PEER_CONNECTION_START_UP_BARRIER_BIT );
         /* Since we configure xClearBitOnExit while waiting, the return value might be cleared automatically.
          * Thus we don't check return value here. */
         ( void ) uxBits;
@@ -2198,6 +2203,13 @@ PeerConnectionResult_t PeerConnection_WriteFrame( PeerConnectionSession_t * pSes
                                                TRANSCEIVER_RTC_CODEC_ALAW_BIT ) )
         {
             ret = PeerConnectionG711Helper_WriteG711Frame( pSession,
+                                                           pTransceiver,
+                                                           pFrame );
+        }
+        else if( TRANSCEIVER_IS_CODEC_ENABLED( pTransceiver->codecBitMap,
+                                               TRANSCEIVER_RTC_CODEC_H265_BIT ) )
+        {
+            ret = PeerConnectionH265Helper_WriteH265Frame( pSession,
                                                            pTransceiver,
                                                            pFrame );
         }
