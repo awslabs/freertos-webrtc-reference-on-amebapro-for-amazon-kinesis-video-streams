@@ -374,6 +374,7 @@ typedef struct IceControllerContext
     SemaphoreHandle_t iceMutex;
 
     uint64_t connectivityCheckTimeoutMs;
+    uint8_t addRelayCandidates;
 } IceControllerContext_t;
 
 #ifdef __cplusplus

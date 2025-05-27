@@ -894,6 +894,18 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
+        if( pCtx->addRelayCandidates != 0U )
+        {
+            pCtx->addRelayCandidates = 0U;
+            #if METRIC_PRINT_ENABLED
+            Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
+            #endif
+            IceControllerNet_AddRelayCandidates( pCtx );
+        }
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
         /* Send next candidate pair request for each candidate pair. */
         ProcessCandidatePairs( pCtx );
 
@@ -1666,8 +1678,7 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
                                                         IceControllerIceServerConfig_t * pIceServersConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    IceControllerResult_t dnsResult;
-    int i;
+    int copyCount = 0;
 
     if( ( pCtx == NULL ) ||
         ( pIceServersConfig == NULL ) )
@@ -1709,28 +1720,19 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        memset( pCtx->iceServers, 0, sizeof( pCtx->iceServers ) );
-        pCtx->iceServersCount = 0;
-
-        for( i = 0; i < pIceServersConfig->iceServersCount; i++ )
+        if( pIceServersConfig->iceServersCount > ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
         {
-            if( pCtx->iceServersCount >= ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
-            {
-                LogInfo( ( "No more space to store extra Ice server." ) );
-                break;
-            }
-
-            memcpy( &pCtx->iceServers[ pCtx->iceServersCount ],
-                    &pIceServersConfig->pIceServers[i],
-                    sizeof( IceControllerIceServer_t ) );
-            dnsResult = IceControllerNet_DnsLookUp( pCtx->iceServers[ pCtx->iceServersCount ].url,
-                                                    &pCtx->iceServers[ pCtx->iceServersCount ].iceEndpoint.transportAddress );
-            if( dnsResult == ICE_CONTROLLER_RESULT_OK )
-            {
-                /* Use the server configuration only if the IP address is successfully resolved. */
-                pCtx->iceServersCount++;
-            }
+            copyCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
+            LogInfo( ( "Ice Controller supports a maximum of %d Ice servers. The additional %d servers will be dropped",
+                       ICE_CONTROLLER_MAX_ICE_SERVER_COUNT,
+                       pIceServersConfig->iceServersCount - ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ) );
         }
+        else
+        {
+            copyCount = pIceServersConfig->iceServersCount;
+        }
+        memcpy( &( pCtx->iceServers[ 0 ] ), pIceServersConfig->pIceServers, copyCount * sizeof( IceControllerIceServer_t ) );
+        pCtx->iceServersCount = copyCount;
     }
 
     return ret;
