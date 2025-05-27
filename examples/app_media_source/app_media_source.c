@@ -31,7 +31,7 @@
 #define TRANSCEIVER_H264_VIDEO_BIT_RATE ( 1.4 * 1024 * 1024 )
 #define TRANSCEIVER_H265_VIDEO_BIT_RATE ( 462 * 1024 )
 
-/* For opus, the bitrate could be between 6 Kbps to 510 Kbps  */
+/* For opus, the bitrate could be between 6 Kbps to 1000 Kbps  */
 #define DEFAULT_TRANSCEIVER_AUDIO_BIT_RATE ( 1000 * 1024 )
 
 #define DEFAULT_TRANSCEIVER_MEDIA_STREAM_ID "myKvsVideoStream"

@@ -250,22 +250,7 @@ static int HandleModuleFrameHook( void * p,
             frame.freeData = 1;
             frame.timestampUs = NetworkingUtils_GetCurrentTimeUs( &pInputItem->timestamp );
 
-            if( pInputItem->type == AV_CODEC_ID_H264 )
-            {
-                if( pCtx->onVideoFrameReadyToSendFunc )
-                {
-                    frame.trackKind = TRANSCEIVER_TRACK_KIND_VIDEO;
-                    ( void ) pCtx->onVideoFrameReadyToSendFunc( pCtx->pOnVideoFrameReadyToSendCustomContext,
-                                                                &frame );
-                }
-                else
-                {
-                    LogError( ( "No available ready to send callback function pointer for video." ) );
-                    vPortFree( frame.pData );
-                    ret = -1;
-                }
-            }
-            else if( pInputItem->type == AV_CODEC_ID_H265 )
+            if( pInputItem->type == AV_CODEC_ID_H264 || pInputItem->type == AV_CODEC_ID_H265 )
             {
                 if( pCtx->onVideoFrameReadyToSendFunc )
                 {
