@@ -350,12 +350,16 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
             }
 
             /* Mutex can only be created in executing scheduler. */
-            pSrtpSender->senderMutex = xSemaphoreCreateMutex();
-            if( pSrtpSender->senderMutex == NULL )
+            if( pSrtpSender->isSenderMutexInit == 0U )
             {
-                LogError( ( "Fail to create mutex for SRTP sender." ) );
-                ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
-                break;
+                pSrtpSender->senderMutex = xSemaphoreCreateMutex();
+                if( pSrtpSender->senderMutex == NULL )
+                {
+                    LogError( ( "Fail to create mutex for SRTP sender." ) );
+                    ret = PEER_CONNECTION_RESULT_FAIL_CREATE_SENDER_MUTEX;
+                    break;
+                }
+                pSrtpSender->isSenderMutexInit = 1U;
             }
         }
     }
@@ -474,28 +478,24 @@ PeerConnectionResult_t PeerConnectionSrtp_DeInit( PeerConnectionSession_t * pSes
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Clean up Video SRTP Sender */
-        if( ( pSession->videoSrtpSender.senderMutex != NULL ) &&
+        if( ( pSession->videoSrtpSender.isSenderMutexInit != 0U ) &&
             ( xSemaphoreTake( pSession->videoSrtpSender.senderMutex,
                               portMAX_DELAY ) == pdTRUE ) )
         {
             PeerConnectionRollingBuffer_Free( &pSession->videoSrtpSender.txRollingBuffer );
             xSemaphoreGive( pSession->videoSrtpSender.senderMutex );
-            vSemaphoreDelete( pSession->videoSrtpSender.senderMutex );
-            pSession->videoSrtpSender.senderMutex = NULL;
         }
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
         /* Clean up Audio SRTP Sender */
-        if( ( pSession->audioSrtpSender.senderMutex != NULL ) &&
+        if( ( pSession->audioSrtpSender.isSenderMutexInit != 0U ) &&
             ( xSemaphoreTake( pSession->audioSrtpSender.senderMutex,
                               portMAX_DELAY ) == pdTRUE ) )
         {
             PeerConnectionRollingBuffer_Free( &pSession->audioSrtpSender.txRollingBuffer );
             xSemaphoreGive( pSession->audioSrtpSender.senderMutex );
-            vSemaphoreDelete( pSession->audioSrtpSender.senderMutex );
-            pSession->audioSrtpSender.senderMutex = NULL;
         }
     }
 

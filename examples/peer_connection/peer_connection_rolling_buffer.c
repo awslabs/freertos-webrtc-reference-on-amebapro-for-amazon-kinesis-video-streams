@@ -76,6 +76,11 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_Create( PeerConnectionRolling
         }
     }
 
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pRollingBuffer->isInit = 1U;
+    }
+
     return ret;
 }
 
@@ -91,9 +96,20 @@ void PeerConnectionRollingBuffer_Free( PeerConnectionRollingBuffer_t * pRollingB
                     pRollingBuffer ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+    else if( pRollingBuffer->isInit == 0U )
+    {
+        LogError( ( "Rolling buffer is not initialized yet." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        pRollingBuffer->isInit = 0U;
+
         while( resultRtpPacketQueue == RTP_PACKET_QUEUE_RESULT_OK )
         {
             resultRtpPacketQueue = RtpPacketQueue_Dequeue( &pRollingBuffer->packetQueue,
@@ -125,6 +141,11 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_GetRtpSequenceBuffer( PeerCon
                     pRollingBuffer, ppPacket ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+    else if( pRollingBuffer->isInit == 0U )
+    {
+        LogError( ( "Rolling buffer is not initialized yet or it has been freed." ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
     else if( pRollingBuffer->capacity == 0 )
     {
         LogError( ( "Rolling buffer is not initialized yet." ) );
@@ -143,8 +164,17 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_GetRtpSequenceBuffer( PeerCon
 void PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( PeerConnectionRollingBuffer_t * pRollingBuffer,
                                                            PeerConnectionRollingBufferPacket_t * pPacket )
 {
-    ( void ) pRollingBuffer;
-    if( pPacket )
+    if( ( pRollingBuffer == NULL ) ||
+        ( pPacket == NULL ) )
+    {
+        LogError( ( "Invalid input, pRollingBuffer: %p, pPacket: %p",
+                    pRollingBuffer, pPacket ) );
+    }
+    else if( pRollingBuffer->isInit == 0U )
+    {
+        LogWarn( ( "Rolling buffer is not initialized yet or it has been freed." ) );
+    }
+    else
     {
         vPortFree( pPacket );
     }
@@ -163,6 +193,11 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SearchRtpSequenceBuffer( Peer
     {
         LogError( ( "Invalid input, pRollingBuffer: %p, ppPacket: %p",
                     pRollingBuffer, ppPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( pRollingBuffer->isInit == 0U )
+    {
+        LogWarn( ( "Rolling buffer is not initialized yet or it has been freed." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else if( pRollingBuffer->capacity == 0 )
@@ -210,6 +245,11 @@ PeerConnectionResult_t PeerConnectionRollingBuffer_SetPacket( PeerConnectionRoll
     {
         LogError( ( "Invalid input, pRollingBuffer: %p, pPacket: %p",
                     pRollingBuffer, pPacket ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else if( pRollingBuffer->isInit == 0U )
+    {
+        LogWarn( ( "Rolling buffer is not initialized yet or it has been freed." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
     else if( pRollingBuffer->capacity == 0 )

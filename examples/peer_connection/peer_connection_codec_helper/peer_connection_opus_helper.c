@@ -289,9 +289,9 @@ PeerConnectionResult_t PeerConnectionOpusHelper_WriteOpusFrame( PeerConnectionSe
                 pRollingBufferPacket->rtpPacket.header.extension.extensionProfile = PEER_CONNECTION_SRTP_TWCC_EXT_PROFILE;
                 pRollingBufferPacket->rtpPacket.header.extension.extensionPayloadLength = 1;
                 pRollingBufferPacket->twccExtensionPayload = PEER_CONNECTION_SRTP_GET_TWCC_PAYLOAD( pSession->rtpConfig.twccId,
-                                                                          pSession->rtpConfig.twccSequence );
+                                                                                                    pSession->rtpConfig.twccSequence );
                 pRollingBufferPacket->rtpPacket.header.extension.pExtensionPayload = &pRollingBufferPacket->twccExtensionPayload;
-                
+
                 #if ENABLE_TWCC_SUPPORT
                 memset( &packetInfo, 0, sizeof( TwccPacketInfo_t ) );
                 packetInfo.packetSize = packetOpus.packetDataLength;
@@ -300,8 +300,8 @@ PeerConnectionResult_t PeerConnectionOpusHelper_WriteOpusFrame( PeerConnectionSe
 
                 RtcpTwccManager_AddPacketInfo( &pSession->pCtx->rtcpTwccManager,
                                                &packetInfo );
-                #endif /* ENABLE_TWCC_SUPPORT */         
-       
+                #endif /* ENABLE_TWCC_SUPPORT */
+
                 pSession->rtpConfig.twccSequence++;
             }
 
@@ -372,19 +372,22 @@ PeerConnectionResult_t PeerConnectionOpusHelper_WriteOpusFrame( PeerConnectionSe
         #endif
     }
 
+    if( packetSent != 0 )
+    {
+        if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
+        {
+            pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+            pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
+        }
+
+        pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
+        pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
+    }
+
     if( isLocked )
     {
         xSemaphoreGive( pSrtpSender->senderMutex );
     }
-
-    if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
-    {
-        pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-        pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
-    }
-
-    pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
-    pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
 
     return ret;
 }
