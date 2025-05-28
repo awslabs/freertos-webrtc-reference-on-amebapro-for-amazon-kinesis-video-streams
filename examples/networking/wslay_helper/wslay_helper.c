@@ -29,8 +29,8 @@
 #include "lwip/sockets.h"
 #include "lwip_netconf.h"
 
-#define NETWORKING_WSLAY_SEND_TIMEOUT_MS ( 1000 )
-#define NETWORKING_WSLAY_RECV_TIMEOUT_MS ( 1000 )
+#define NETWORKING_WSLAY_SEND_TIMEOUT_MS ( 10000 )
+#define NETWORKING_WSLAY_RECV_TIMEOUT_MS ( 10000 )
 #define NETWORKING_WSLAY_USER_AGENT_NAME_MAX_LENGTH ( 128 )
 #define NETWORKING_WSLAY_HOST_NAME_MAX_LENGTH ( 256 )
 #define NETWORKING_WSLAY_CLIENT_KEY_RANDOM_LENGTH ( 16 )
@@ -200,9 +200,9 @@ static void HandleWslayDataMessage( void * pUserData,
 }
 
 static NetworkingWslayResult_t EncodeUriString( char * pSrc,
-                                                 size_t srcLength,
-                                                 char * pDst,
-                                                 size_t * pDstLength )
+                                                size_t srcLength,
+                                                char * pDst,
+                                                size_t * pDstLength )
 {
     NetworkingWslayResult_t ret = NETWORKING_WSLAY_RESULT_OK;
     size_t encodedLength = 0, remainLength;
@@ -1379,7 +1379,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 memset( &credentials, 0, sizeof( NetworkCredentials_t ) );
                 credentials.pRootCa = pAwsCredentials->pRootCa;
                 credentials.rootCaSize = pAwsCredentials->rootCaSize;
-        
+
                 if( pAwsCredentials->iotThingCertSize > 0 )
                 {
                     credentials.pClientCert = pAwsCredentials->pIotThingCert;
@@ -1387,10 +1387,10 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                     credentials.pPrivateKey = pAwsCredentials->pIotThingPrivateKey;
                     credentials.privateKeySize = pAwsCredentials->iotThingPrivateKeySize;
                 }
-        
+
                 LogDebug( ( "Establishing a TLS session with %s:443.",
                             host ) );
-        
+
                 /* Attempt to create a server-authenticated TLS connection. */
                 xNetworkStatus = TLS_FreeRTOS_Connect( &pWebsocketCtx->xTlsNetworkContext,
                                                        host,
@@ -1399,7 +1399,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                                                        NETWORKING_WSLAY_SEND_TIMEOUT_MS,
                                                        NETWORKING_WSLAY_RECV_TIMEOUT_MS,
                                                        0 ); /* Flag 0 - Blocking call */
-        
+
                 if( xNetworkStatus != TLS_TRANSPORT_SUCCESS )
                 {
                     LogError( ( "Fail to connect with server with return %d", xNetworkStatus ) );
@@ -1442,7 +1442,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 /* Initialize Request header buffer. */
                 xRequestHeaders.pBuffer = ( uint8_t * ) pWebsocketCtx->websocketTxBuffer + pathLength;
                 xRequestHeaders.bufferLen = NETWORKING_WEBSOCKET_BUFFER_LENGTH - pathLength;
-    
+
                 /* Set HTTP request parameters to get temporary AWS IoT credentials. */
                 xRequestInfo.pMethod = HTTP_METHOD_GET;
                 xRequestInfo.methodLen = sizeof( HTTP_METHOD_GET ) - 1;
@@ -1452,10 +1452,10 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 xRequestInfo.hostLen = hostLength;
                 xRequestInfo.reqFlags = HTTP_REQUEST_NO_USER_AGENT_FLAG;
                 /* Note that host would be added to the header field by HTTPClient_InitializeRequestHeaders. */
-    
+
                 /* Initialize request headers. */
                 xHttpStatus = HTTPClient_InitializeRequestHeaders( &xRequestHeaders, &xRequestInfo );
-    
+
                 if( xHttpStatus != HTTPSuccess )
                 {
                     LogError( ( "Failed to initialize request headers: Error=%s.",
@@ -1556,7 +1556,7 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 LogDebug( ( "Sending HTTP header: %.*s", ( int ) xRequestHeaders.headersLen, xRequestHeaders.pBuffer ) );
 
                 /* Send the request to AWS IoT Credentials Provider to obtain temporary credentials
-                * so that the demo application can access configured S3 bucket thereafter. */
+                 * so that the demo application can access configured S3 bucket thereafter. */
                 xHttpStatus = HTTPClient_Send( &pWebsocketCtx->xTransportInterface,
                                                &xRequestHeaders,
                                                NULL,
@@ -1611,12 +1611,20 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
                 LogError( ( "Fail to initialize wslay context, ret: %d", ret ) );
                 break;
             }
-        
+
             /* Initialize wake up socket for signal function. */
             ret = InitializeWakeUpSocket( pWebsocketCtx );
             if( ret != NETWORKING_WSLAY_RESULT_OK )
             {
                 LogError( ( "Fail to initialize wake up socket handler, ret: %d", ret ) );
+                break;
+            }
+
+            xNetworkStatus = TLS_FreeRTOS_ConfigureTimeout( &pWebsocketCtx->xTlsNetworkContext, 0U, 0U );
+            if( xNetworkStatus != TLS_TRANSPORT_SUCCESS )
+            {
+                LogError( ( "Failed to configure TLS timeout: Status=%d", xNetworkStatus ) );
+                ret = NETWORKING_WSLAY_RESULT_FAIL_CONNECT;
                 break;
             }
 
@@ -1650,13 +1658,13 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
         {
             pWebsocketCtx->connectionEstablished = 0U;
             pWebsocketCtx->connectionCloseRequested = 0U;
-    
+
             /* Shutdown WebSocket read operations */
             wslay_event_shutdown_read( pWebsocketCtx->wslayContext );
-    
+
             /* Shutdown WebSocket write operations */
             wslay_event_shutdown_write( pWebsocketCtx->wslayContext );
-    
+
             /* Free the wslay context */
             wslay_event_context_free( pWebsocketCtx->wslayContext );
             pWebsocketCtx->wslayContext = NULL;
@@ -1761,7 +1769,7 @@ WebsocketResult_t Websocket_Recv( NetworkingWslayContext_t * pWebsocketCtx )
             {
                 LogError( ( "Fail to read websocket message, ret: %d", ret ) );
                 pWebsocketCtx->connectionEstablished = 0U;
-            } 
+            }
         }
     }
 

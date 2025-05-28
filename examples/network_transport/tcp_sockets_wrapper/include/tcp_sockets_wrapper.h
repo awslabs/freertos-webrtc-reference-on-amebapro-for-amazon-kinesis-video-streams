@@ -38,6 +38,8 @@
 #define TCP_SOCKETS_ERRNO_ENOSPC              ( -10 ) /*!< No space left on device */
 #define TCP_SOCKETS_ERRNO_EINTR               ( -11 ) /*!< Interrupted system call */
 
+#define TCP_SOCKETS_TIMEOUT_INFINITE          ( 0xFFFFFFFF ) /* use this value in timeout parameter to wait indefinitely */
+
 struct xSOCKET
 {
     int xFd;
@@ -57,7 +59,8 @@ typedef struct xSOCKET * Socket_t;     /**< @brief Socket handle data type. */
  * @param[in] receiveTimeoutMs Timeout (in milliseconds) for transport receive.
  * @param[in] sendTimeoutMs Timeout (in milliseconds) for transport send.
  *
- * @note A timeout of 0 means infinite timeout.
+ * @note A timeout value of 0 means the socket will be non-blocking.
+ *       A timeout value of TCP_SOCKETS_TIMEOUT_INFINITE means the socket will wait indefinitely.
  *
  * @return Non-zero value on error, 0 on success.
  */
@@ -121,5 +124,21 @@ int32_t TCP_Sockets_Recv( Socket_t xSocket,
  * * Return socket descriptor with value >= 0. Otherwise, it returns -1.
  */
 int32_t TCP_Sockets_GetSocketFd( Socket_t xSocket );
+
+/**
+ * @brief Configure send/recv timeout after connection establishment.
+ *
+ * @param[in] xSocket The socket descriptor.
+ * @param[in] receiveTimeoutMs Timeout (in milliseconds) for transport receive.
+ * @param[in] sendTimeoutMs Timeout (in milliseconds) for transport send.
+ *
+ * @note A timeout value of 0 means the socket will be non-blocking.
+ *       A timeout value of TCP_SOCKETS_TIMEOUT_INFINITE means the socket will wait indefinitely.
+ *
+ * @return Non-zero value on error, 0 on success.
+ */
+BaseType_t TCP_Sockets_ConfigureTimeout( Socket_t xSocket,
+                                         uint32_t receiveTimeoutMs,
+                                         uint32_t sendTimeoutMs );
 
 #endif /* ifndef TCP_SOCKETS_WRAPPER_H */
