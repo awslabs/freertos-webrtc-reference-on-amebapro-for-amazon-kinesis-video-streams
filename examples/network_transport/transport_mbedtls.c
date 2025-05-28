@@ -986,3 +986,31 @@ int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext )
 
     return ret;
 }
+/*-----------------------------------------------------------*/
+
+TlsTransportStatus_t TLS_FreeRTOS_ConfigureTimeout( TlsNetworkContext_t * pTlsNetworkContext,
+                                                    uint32_t receiveTimeoutMs,
+                                                    uint32_t sendTimeoutMs )
+{
+    TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
+    BaseType_t tcpResult = TCP_SOCKETS_ERRNO_NONE;
+
+    if( ( pTlsNetworkContext == NULL ) ||
+        ( pTlsNetworkContext->pParams == NULL ) )
+    {
+        returnStatus = TLS_TRANSPORT_INVALID_PARAMETER;
+    }
+
+    if( returnStatus == TLS_TRANSPORT_SUCCESS )
+    {
+        tcpResult = TCP_Sockets_ConfigureTimeout( pTlsNetworkContext->pParams->tcpSocket, receiveTimeoutMs, sendTimeoutMs );
+        if( tcpResult != TCP_SOCKETS_ERRNO_NONE )
+        {
+            LogError( ( "Failed to configure timeout: TCP_Sockets_ConfigureTimeout returned error %ld.",
+                        tcpResult ) );
+            returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
+        }
+    }
+
+    return returnStatus;
+}

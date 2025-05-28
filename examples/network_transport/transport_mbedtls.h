@@ -201,6 +201,20 @@ int32_t TLS_FreeRTOS_send( TlsNetworkContext_t * pTlsNetworkContext,
  */
 int32_t TLS_FreeRTOS_GetSocketFd( TlsNetworkContext_t * pTlsNetworkContext );
 
+/**
+ * @brief Configures receive and send timeouts for an existing TLS connection.
+ *
+ * @param[in] pTlsNetworkContext Pointer to the network context containing the TLS connection.
+ * @param[in] receiveTimeoutMs Timeout in milliseconds for receiving data.
+ * @param[in] sendTimeoutMs Timeout in milliseconds for sending data.
+ *
+ * @return Returns TLS_TRANSPORT_SUCCESS if timeouts are configured successfully,
+ *         otherwise returns appropriate error code indicating failure.
+ */
+TlsTransportStatus_t TLS_FreeRTOS_ConfigureTimeout( TlsNetworkContext_t * pTlsNetworkContext,
+                                                    uint32_t receiveTimeoutMs,
+                                                    uint32_t sendTimeoutMs );
+
 #ifdef MBEDTLS_DEBUG_C
 
 /**

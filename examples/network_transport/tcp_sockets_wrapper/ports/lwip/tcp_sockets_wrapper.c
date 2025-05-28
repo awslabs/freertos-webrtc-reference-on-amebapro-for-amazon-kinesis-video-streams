@@ -35,6 +35,80 @@
 /* configASSERT() using stuff in task.h */
 #include "task.h"
 
+static BaseType_t ConfigureTimeout( Socket_t xSocket,
+                                    uint32_t receiveTimeoutMs,
+                                    uint32_t sendTimeoutMs )
+{
+    BaseType_t xRet = TCP_SOCKETS_ERRNO_NONE;
+    int fcntlFlags = 0;
+    uint32_t realReceiveTimeoutMs = receiveTimeoutMs;
+    uint32_t realSendTimeoutMs = sendTimeoutMs;
+    int setsockoptResult = 0;
+
+    if( ( receiveTimeoutMs == 0 ) &&
+        ( sendTimeoutMs == 0 ) )
+    {
+        fcntlFlags = fcntl( xSocket->xFd, F_GETFL, 0 );
+        if( fcntlFlags < 0 )
+        {
+            LogError( ( "fcntl() failed with errno: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
+        else
+        {
+            fcntlFlags |= O_NONBLOCK;
+            if( fcntl( xSocket->xFd, F_SETFL, fcntlFlags ) < 0 )
+            {
+                LogError( ( "fcntl() failed with errno: %d", errno ) );
+                xRet = TCP_SOCKETS_ERRNO_ERROR;
+            }
+        }
+    }
+    else
+    {
+        /* If the timeout is not 0, disable the non-blocking flag in socket handler. */
+        fcntlFlags = fcntl( xSocket->xFd, F_GETFL, 0 );
+        if( fcntlFlags < 0 )
+        {
+            LogError( ( "fcntl() failed with errno: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
+        else
+        {
+            fcntlFlags &= ~O_NONBLOCK;
+            if( fcntl( xSocket->xFd, F_SETFL, fcntlFlags ) < 0 )
+            {
+                LogError( ( "fcntl() failed with errno: %d", errno ) );
+                xRet = TCP_SOCKETS_ERRNO_ERROR;
+            }
+        }
+
+        if( ( receiveTimeoutMs == TCP_SOCKETS_TIMEOUT_INFINITE ) &&
+            ( sendTimeoutMs == TCP_SOCKETS_TIMEOUT_INFINITE ) )
+        {
+            /* Set the timeout to 0 as waiting infinitely. */
+            realReceiveTimeoutMs = 0U;
+            realSendTimeoutMs = 0U;
+        }
+
+        setsockoptResult = setsockopt( xSocket->xFd, SOL_SOCKET, SO_RCVTIMEO, &realReceiveTimeoutMs, sizeof( realReceiveTimeoutMs ) );
+        if( setsockoptResult < 0 )
+        {
+            LogError( ( "setsockopt() failed to set receive timeout. Error code: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
+
+        setsockoptResult = setsockopt( xSocket->xFd, SOL_SOCKET, SO_SNDTIMEO, &realSendTimeoutMs, sizeof( realSendTimeoutMs ) );
+        if( setsockoptResult < 0 )
+        {
+            LogError( ( "setsockopt() failed to set send timeout. Error code: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
+    }
+
+    return xRet;
+}
+
 /**
  * @brief Establish a connection to server.
  *
@@ -58,7 +132,6 @@ BaseType_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
     BaseType_t xRet = TCP_SOCKETS_ERRNO_NONE;
     struct addrinfo xHints, * pxAddrList, * pxCur;
     char xPortStr[6];
-    int fcntlFlags = 0;
 
     memset( &xHints, 0, sizeof( xHints ) );
     xHints.ai_family = AF_UNSPEC;
@@ -115,30 +188,7 @@ BaseType_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
 
     if( xRet == TCP_SOCKETS_ERRNO_NONE )
     {
-        if( ( receiveTimeoutMs == 0 ) &&
-            ( sendTimeoutMs == 0 ) )
-        {
-            fcntlFlags = fcntl( xFd, F_GETFL, 0 );
-            if( fcntlFlags < 0 )
-            {
-                LogError( ( "fcntl() failed with errno: %d", errno ) );
-                xRet = TCP_SOCKETS_ERRNO_ERROR;
-            }
-            else
-            {
-                fcntlFlags |= O_NONBLOCK;
-                if( fcntl( xFd, F_SETFL, fcntlFlags ) < 0 )
-                {
-                    LogError( ( "fcntl() failed with errno: %d", errno ) );
-                    xRet = TCP_SOCKETS_ERRNO_ERROR;
-                }
-            }
-        }
-        else
-        {
-            setsockopt( xFd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeoutMs, sizeof( receiveTimeoutMs ) );
-            setsockopt( xFd, SOL_SOCKET, SO_SNDTIMEO, &sendTimeoutMs, sizeof( sendTimeoutMs ) );
-        }
+        xRet = ConfigureTimeout( *pTcpSocket, receiveTimeoutMs, sendTimeoutMs );
     }
 
     return xRet;
@@ -270,4 +320,23 @@ int32_t TCP_Sockets_GetSocketFd( Socket_t xSocket )
     }
 
     return ret;
+}
+
+BaseType_t TCP_Sockets_ConfigureTimeout( Socket_t xSocket,
+                                         uint32_t receiveTimeoutMs,
+                                         uint32_t sendTimeoutMs )
+{
+    BaseType_t xRet = TCP_SOCKETS_ERRNO_NONE;
+
+    if( xSocket == NULL )
+    {
+        xRet = TCP_SOCKETS_ERRNO_EINVAL;
+    }
+
+    if( xRet == TCP_SOCKETS_ERRNO_NONE )
+    {
+        xRet = ConfigureTimeout( xSocket, receiveTimeoutMs, sendTimeoutMs );
+    }
+
+    return xRet;
 }
