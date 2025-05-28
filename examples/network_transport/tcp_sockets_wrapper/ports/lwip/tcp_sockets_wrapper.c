@@ -43,6 +43,7 @@ static BaseType_t ConfigureTimeout( Socket_t xSocket,
     int fcntlFlags = 0;
     uint32_t realReceiveTimeoutMs = receiveTimeoutMs;
     uint32_t realSendTimeoutMs = sendTimeoutMs;
+    int setsockoptResult = 0;
 
     if( ( receiveTimeoutMs == 0 ) &&
         ( sendTimeoutMs == 0 ) )
@@ -82,16 +83,27 @@ static BaseType_t ConfigureTimeout( Socket_t xSocket,
             }
         }
 
-        if( ( receiveTimeoutMs == TCP_SOCKETS_INFINITE_TIMEOUT ) &&
-            ( sendTimeoutMs == TCP_SOCKETS_INFINITE_TIMEOUT ) )
+        if( ( receiveTimeoutMs == TCP_SOCKETS_TIMEOUT_INFINITE ) &&
+            ( sendTimeoutMs == TCP_SOCKETS_TIMEOUT_INFINITE ) )
         {
             /* Set the timeout to 0 as waiting infinitely. */
             realReceiveTimeoutMs = 0U;
             realSendTimeoutMs = 0U;
         }
 
-        setsockopt( xSocket->xFd, SOL_SOCKET, SO_RCVTIMEO, &realReceiveTimeoutMs, sizeof( realReceiveTimeoutMs ) );
-        setsockopt( xSocket->xFd, SOL_SOCKET, SO_SNDTIMEO, &realSendTimeoutMs, sizeof( realSendTimeoutMs ) );
+        setsockoptResult = setsockopt( xSocket->xFd, SOL_SOCKET, SO_RCVTIMEO, &realReceiveTimeoutMs, sizeof( realReceiveTimeoutMs ) );
+        if( setsockoptResult < 0 )
+        {
+            LogError( ( "setsockopt() failed to set receive timeout. Error code: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
+
+        setsockoptResult = setsockopt( xSocket->xFd, SOL_SOCKET, SO_SNDTIMEO, &realSendTimeoutMs, sizeof( realSendTimeoutMs ) );
+        if( setsockoptResult < 0 )
+        {
+            LogError( ( "setsockopt() failed to set send timeout. Error code: %d", errno ) );
+            xRet = TCP_SOCKETS_ERRNO_ERROR;
+        }
     }
 
     return xRet;
