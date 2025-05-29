@@ -387,19 +387,22 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
         #endif
     }
 
+    if( packetSent != 0 )
+    {
+        if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
+        {
+            pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
+            pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
+        }
+
+        pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
+        pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
+    }
+
     if( isLocked )
     {
         xSemaphoreGive( pSrtpSender->senderMutex );
     }
-
-    if( pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs == 0 )
-    {
-        pTransceiver->rtpSender.rtpFirstFrameWallClockTimeUs = NetworkingUtils_GetCurrentTimeUs( NULL );
-        pTransceiver->rtpSender.rtpTimeOffset = randomRtpTimeoffset;
-    }
-
-    pTransceiver->rtcpStats.rtpPacketsTransmitted += packetSent;
-    pTransceiver->rtcpStats.rtpBytesTransmitted += bytesSent;
 
     return ret;
 }

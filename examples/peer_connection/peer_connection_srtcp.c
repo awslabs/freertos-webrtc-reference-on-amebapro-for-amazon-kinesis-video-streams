@@ -916,7 +916,7 @@ PeerConnectionResult_t PeerConnectionSrtp_HandleSrtcpPacket( PeerConnectionSessi
             ret = PEER_CONNECTION_RESULT_FAIL_DECRYPT_SRTP_RTP_PACKET;
         }
     }
-  
+
     if( isLocked != 0U )
     {
         xSemaphoreGive( pSession->srtpSessionMutex );

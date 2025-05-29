@@ -1618,8 +1618,8 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
         if( ret == PEER_CONNECTION_RESULT_OK )
         {
             resultRtcpTwccManager = RtcpTwccManager_Init( &pSession->pCtx->rtcpTwccManager,
-                                                        pSession->pCtx->twccPacketInfo,
-                                                        PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
+                                                          pSession->pCtx->twccPacketInfo,
+                                                          PEER_CONNECTION_RTCP_TWCC_MAX_ARRAY );
             if( resultRtcpTwccManager != RTCP_TWCC_MANAGER_RESULT_OK )
             {
                 LogError( ( "Fail to Initialize RTCP TWCC Manager, result: %d", resultRtcpTwccManager ) );

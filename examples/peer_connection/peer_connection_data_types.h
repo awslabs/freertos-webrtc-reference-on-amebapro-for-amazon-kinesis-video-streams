@@ -235,6 +235,7 @@ typedef struct PeerConnectionRollingBufferPacket
 
 typedef struct PeerConnectionRollingBuffer
 {
+    uint8_t isInit;
     RtpPacketQueue_t packetQueue;
     size_t maxSizePerPacket;
     size_t capacity; /* Buffer duration * highest expected bitrate (in bps) / 8 / maxPacketSize. */
@@ -252,6 +253,7 @@ typedef struct PeerConnectionJitterBufferPacket
 
 typedef struct PeerConnectionJitterBuffer
 {
+    uint8_t isInit;
     uint8_t isStart; /* The jitter buffer starts to receive packet or not. */
     size_t capacity; /* The total number of packets that packet queue can store. */
     uint32_t clockRate; /* The clock rate based on the codec. For example: the clock rate is 90000 if the chosen RTP is H264/90000. */
@@ -342,6 +344,7 @@ typedef struct PeerConnectionSrtpSender
 
     /* Mutex to protect sender info like rolling buffer. */
     SemaphoreHandle_t senderMutex;
+    uint8_t isSenderMutexInit;
 } PeerConnectionSrtpSender_t;
 
 typedef struct PeerConnectionSrtpReceiver
