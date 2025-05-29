@@ -894,13 +894,10 @@ IceControllerResult_t IceController_ProcessIceCandidatesAndPairs( IceControllerC
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        if( pCtx->addRelayCandidates != 0U )
+        if( pCtx->addLocalCandidates != 0U )
         {
-            pCtx->addRelayCandidates = 0U;
-            #if METRIC_PRINT_ENABLED
-            Metric_StartEvent( METRIC_EVENT_ICE_GATHER_RELAY_CANDIDATES );
-            #endif
-            IceControllerNet_AddRelayCandidates( pCtx );
+            pCtx->addLocalCandidates = 0U;
+            IceControllerNet_AddLocalCandidates( pCtx );
         }
     }
 
@@ -1542,7 +1539,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
     {
-        IceControllerNet_AddLocalCandidates( pCtx );
+        pCtx->addLocalCandidates = 1U;
     }
 
     if( ret == ICE_CONTROLLER_RESULT_OK )
@@ -1678,7 +1675,7 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
                                                         IceControllerIceServerConfig_t * pIceServersConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    int copyCount = 0;
+    int validIceServerCount = 0;
 
     if( ( pCtx == NULL ) ||
         ( pIceServersConfig == NULL ) )
@@ -1722,17 +1719,17 @@ IceControllerResult_t IceController_AddIceServerConfig( IceControllerContext_t *
     {
         if( pIceServersConfig->iceServersCount > ICE_CONTROLLER_MAX_ICE_SERVER_COUNT )
         {
-            copyCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
+            validIceServerCount = ICE_CONTROLLER_MAX_ICE_SERVER_COUNT;
             LogInfo( ( "Ice Controller supports a maximum of %d Ice servers. The additional %d servers will be dropped",
                        ICE_CONTROLLER_MAX_ICE_SERVER_COUNT,
                        pIceServersConfig->iceServersCount - ICE_CONTROLLER_MAX_ICE_SERVER_COUNT ) );
         }
         else
         {
-            copyCount = pIceServersConfig->iceServersCount;
+            validIceServerCount = pIceServersConfig->iceServersCount;
         }
-        memcpy( &( pCtx->iceServers[ 0 ] ), pIceServersConfig->pIceServers, copyCount * sizeof( IceControllerIceServer_t ) );
-        pCtx->iceServersCount = copyCount;
+        memcpy( &( pCtx->iceServers[ 0 ] ), pIceServersConfig->pIceServers, validIceServerCount * sizeof( IceControllerIceServer_t ) );
+        pCtx->iceServersCount = validIceServerCount;
     }
 
     return ret;
