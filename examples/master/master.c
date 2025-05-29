@@ -107,7 +107,7 @@ static int OnSignalingMessageReceived( SignalingMessage_t * pSignalingMessage,
 static void SampleSenderBandwidthEstimationHandler( void * pCustomContext,
                                                     TwccBandwidthInfo_t * pTwccBandwidthInfo );
 #endif /* ENABLE_TWCC_SUPPORT */
-static int initializeApplication( DemoContext_t * pDemoContext );
+static int InitializeApplication( DemoContext_t * pDemoContext );
 static int32_t InitializePeerConnectionSession( DemoContext_t * pDemoContext,
                                                 DemoPeerConnectionSession_t * pDemoSession );
 static int32_t StartPeerConnectionSession( DemoContext_t * pDemoContext,
@@ -188,7 +188,7 @@ static void wifi_common_init( void )
     }
 }
 
-static int initializeApplication( DemoContext_t * pDemoContext )
+static int InitializeApplication( DemoContext_t * pDemoContext )
 {
     int ret = 0;
     SignalingControllerResult_t signalingControllerReturn;
@@ -1562,7 +1562,7 @@ static void Master_Task( void * pParameter )
     connectInfo.awsIotCreds.roleAliasLength = strlen( AWS_IOT_THING_ROLE_ALIAS );
     #endif /* #if defined( AWS_IOT_THING_ROLE_ALIAS ) */
 
-    ret = initializeApplication( &demoContext );
+    ret = InitializeApplication( &demoContext );
 
     if( ret == 0 )
     {
