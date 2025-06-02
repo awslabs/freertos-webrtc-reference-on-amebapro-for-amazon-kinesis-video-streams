@@ -46,7 +46,7 @@ jobs:
         # ${{ env.stepName }}
         echo -e "::group::${{ env.bashInfo }} ${{ env.stepName }} ${{ env.bashEnd }}"
 
-        cp examples/master/demo_config_template.h examples/master/demo_config.h
+        cp examples/demo_config/demo_config_template.h examples/demo_config/demo_config.h
 
         echo "::endgroup::"
         echo -e "${{ env.bashPass }} ${{ env.stepName }} ${{ env.bashEnd }}"
