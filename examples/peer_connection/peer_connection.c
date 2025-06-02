@@ -1606,12 +1606,12 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
             ret = PEER_CONNECTION_RESULT_FAIL_CREATE_TASK_ICE_SOCK_LISTENER;
         }
+    }
 
-        if( ret == PEER_CONNECTION_RESULT_OK )
-        {
-            pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
-            pSession->pCtx = &peerConnectionContext;
-        }
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        pSession->state = PEER_CONNECTION_SESSION_STATE_INITED;
+        pSession->pCtx = &peerConnectionContext;
     }
 
     #if ENABLE_TWCC_SUPPORT

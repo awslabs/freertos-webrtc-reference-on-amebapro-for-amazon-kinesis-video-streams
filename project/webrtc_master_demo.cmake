@@ -16,6 +16,7 @@ file(
   GLOB
   WEBRTC_APPLICATION_MASTER_SOURCE_FILES
   "${REPO_ROOT_DIRECTORY}/examples/master/*.c"
+  "${REPO_ROOT_DIRECTORY}/examples/app_common/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/peer_connection/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/peer_connection/peer_connection_codec_helper/*.c"
   "${REPO_ROOT_DIRECTORY}/examples/signaling_controller/*.c"
@@ -35,9 +36,10 @@ file(
   "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2/*.c" )
 
 set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
-     "${REPO_ROOT_DIRECTORY}/examples/master/"
-     "${REPO_ROOT_DIRECTORY}/examples/peer_connection/"
-     "${REPO_ROOT_DIRECTORY}/examples/peer_connection/peer_connection_codec_helper/"
+     "${REPO_ROOT_DIRECTORY}/examples/master"
+     "${REPO_ROOT_DIRECTORY}/examples/app_common"
+     "${REPO_ROOT_DIRECTORY}/examples/peer_connection"
+     "${REPO_ROOT_DIRECTORY}/examples/peer_connection/peer_connection_codec_helper"
      "${REPO_ROOT_DIRECTORY}/examples/peer_connection/peer_connection_codec_helper/include"
      "${REPO_ROOT_DIRECTORY}/examples/signaling_controller"
      "${REPO_ROOT_DIRECTORY}/examples/network_transport"
@@ -48,7 +50,6 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/examples/networking/wslay_helper"
      "${REPO_ROOT_DIRECTORY}/examples/networking/networking_utils"
      "${REPO_ROOT_DIRECTORY}/examples/logging"
-     "${REPO_ROOT_DIRECTORY}/configs/mbedtls"
      "${REPO_ROOT_DIRECTORY}/examples/message_queue"
      "${REPO_ROOT_DIRECTORY}/examples/base64"
      "${REPO_ROOT_DIRECTORY}/examples/sdp_controller"
@@ -56,7 +57,8 @@ set( WEBRTC_APPLICATION_MASTER_INCLUDE_DIRS
      "${REPO_ROOT_DIRECTORY}/examples/ice_controller"
      "${REPO_ROOT_DIRECTORY}/examples/timer_controller"
      "${REPO_ROOT_DIRECTORY}/examples/app_media_source"
-     "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2" )
+     "${REPO_ROOT_DIRECTORY}/examples/app_media_source/port/ameba_pro2"
+     "${REPO_ROOT_DIRECTORY}/examples/demo_config" )
 
 if( BUILD_USRSCTP_LIBRARY )
      file( GLOB USRSCTP_SRC_FILES "${REPO_ROOT_DIRECTORY}/examples/libusrsctp/*.c" )

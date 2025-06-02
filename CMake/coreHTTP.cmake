@@ -14,7 +14,7 @@ target_sources( corehttp
 target_include_directories( corehttp PUBLIC
                             ${HTTP_INCLUDE_PUBLIC_DIRS}
                             ${REPO_ROOT_DIRECTORY}/configs/corehttp
-                            ${REPO_ROOT_DIRECTORY}/examples/master # to get demo_config.h definition
+                            ${REPO_ROOT_DIRECTORY}/examples/demo_config # to get demo_config.h definition
 )
 
 # Suppress warnings for some Libraries

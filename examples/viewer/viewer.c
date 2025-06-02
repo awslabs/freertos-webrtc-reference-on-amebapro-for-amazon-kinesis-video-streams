@@ -18,7 +18,7 @@
 #define DEMO_MASTER_CLIENT_ID "ProduceMaster"
 #define DEMO_MASTER_CLIENT_ID_LENGTH ( 13 )
 
-static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
+static int32_t CreateSdpOffer( AppContext_t * pAppContext )
 {
     int32_t ret = 0;
     uint8_t skipProcess = 0;
@@ -26,7 +26,7 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
     PeerConnectionResult_t peerConnectionResult;
     PeerConnectionBufferSessionDescription_t bufferSessionDescription;
     size_t sdpOfferMessageLength = 0;
-    DemoPeerConnectionSession_t * pPcSession = NULL;
+    AppSession_t * pAppSession = NULL;
     SignalingControllerEventMessage_t eventMessage = {
         .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
         .onCompleteCallback = NULL,
@@ -35,8 +35,8 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
 
     if( skipProcess == 0 )
     {
-        pPcSession = GetCreatePeerConnectionSession( pDemoContext, DEMO_MASTER_CLIENT_ID, DEMO_MASTER_CLIENT_ID_LENGTH, 1U );
-        if( pPcSession == NULL )
+        pAppSession = GetCreatePeerConnectionSession( pAppContext, DEMO_MASTER_CLIENT_ID, DEMO_MASTER_CLIENT_ID_LENGTH, 1U );
+        if( pAppSession == NULL )
         {
             LogWarn( ( "No available peer connection session for remote client ID(%u): %.*s",
                        DEMO_MASTER_CLIENT_ID_LENGTH,
@@ -49,9 +49,9 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
     if( skipProcess == 0 )
     {
         memset( &bufferSessionDescription, 0, sizeof( PeerConnectionBufferSessionDescription_t ) );
-        bufferSessionDescription.pSdpBuffer = pDemoContext->sdpBuffer;
+        bufferSessionDescription.pSdpBuffer = pAppContext->sdpBuffer;
         bufferSessionDescription.sdpBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
-        peerConnectionResult = PeerConnection_SetLocalDescription( &pPcSession->peerConnectionSession,
+        peerConnectionResult = PeerConnection_SetLocalDescription( &pAppSession->peerConnectionSession,
                                                                    &bufferSessionDescription );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
@@ -61,11 +61,11 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
 
     if( skipProcess == 0 )
     {
-        pDemoContext->sdpConstructedBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
-        peerConnectionResult = PeerConnection_CreateOffer( &pPcSession->peerConnectionSession,
+        pAppContext->sdpConstructedBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
+        peerConnectionResult = PeerConnection_CreateOffer( &pAppSession->peerConnectionSession,
                                                            &bufferSessionDescription,
-                                                           pDemoContext->sdpConstructedBuffer,
-                                                           &pDemoContext->sdpConstructedBufferLength );
+                                                           pAppContext->sdpConstructedBuffer,
+                                                           &pAppContext->sdpConstructedBufferLength );
         if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
         {
             LogWarn( ( "PeerConnection_CreateOffer fail, result: %d.", peerConnectionResult ) );
@@ -77,17 +77,17 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
     {
         /* Translate from SDP formal format into signaling event message by replacing newline with "\\n" or "\\r\\n". */
         sdpOfferMessageLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
-        signalingControllerReturn = SignalingController_SerializeSdpContentNewline( pDemoContext->sdpConstructedBuffer,
-                                                                                    pDemoContext->sdpConstructedBufferLength,
-                                                                                    pDemoContext->sdpBuffer,
+        signalingControllerReturn = SignalingController_SerializeSdpContentNewline( pAppContext->sdpConstructedBuffer,
+                                                                                    pAppContext->sdpConstructedBufferLength,
+                                                                                    pAppContext->sdpBuffer,
                                                                                     &sdpOfferMessageLength );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             LogError( ( "Fail to deserialize SDP offer newline, result: %d, constructed buffer(%u): %.*s",
                         signalingControllerReturn,
-                        pDemoContext->sdpConstructedBufferLength,
-                        ( int ) pDemoContext->sdpConstructedBufferLength,
-                        pDemoContext->sdpConstructedBuffer ) );
+                        pAppContext->sdpConstructedBufferLength,
+                        ( int ) pAppContext->sdpConstructedBufferLength,
+                        pAppContext->sdpConstructedBuffer ) );
             skipProcess = 1;
         }
     }
@@ -97,12 +97,12 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
         eventMessage.eventContent.correlationIdLength = 0U;
         memset( eventMessage.eventContent.correlationId, 0, SECRET_ACCESS_KEY_MAX_LEN );
         eventMessage.eventContent.messageType = SIGNALING_TYPE_MESSAGE_SDP_OFFER;
-        eventMessage.eventContent.pDecodeMessage = pDemoContext->sdpBuffer;
+        eventMessage.eventContent.pDecodeMessage = pAppContext->sdpBuffer;
         eventMessage.eventContent.decodeMessageLength = sdpOfferMessageLength;
         memcpy( eventMessage.eventContent.remoteClientId, pEvent->pRemoteClientId, pEvent->remoteClientIdLength );
         eventMessage.eventContent.remoteClientIdLength = pEvent->remoteClientIdLength;
 
-        signalingControllerReturn = SignalingController_SendMessage( &demoContext.signalingControllerContext, &eventMessage );
+        signalingControllerReturn = SignalingController_SendMessage( &pAppContext->ignalingControllerContext, &eventMessage );
         if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
         {
             skipProcess = 1;
@@ -115,7 +115,7 @@ static int32_t CreateSdpOffer( DemoContext_t * pDemoContext )
         LogInfo( ( "Created SDP offer(%u): %.*s",
                    sdpOfferMessageLength,
                    ( int ) sdpOfferMessageLength,
-                   pDemoContext->sdpBuffer ) );
+                   pAppContext->sdpBuffer ) );
     }
 
     return ret;
