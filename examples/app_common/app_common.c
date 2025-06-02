@@ -37,6 +37,10 @@
 #include "metric.h"
 #endif
 
+#ifdef ENABLE_STREAMING_LOOPBACK
+#include "app_media_source.h"
+#endif /* ifdef ENABLE_STREAMING_LOOPBACK */
+
 #if ENABLE_SCTP_DATA_CHANNEL
 #include "peer_connection_sctp.h"
 #endif /* ENABLE_SCTP_DATA_CHANNEL */
