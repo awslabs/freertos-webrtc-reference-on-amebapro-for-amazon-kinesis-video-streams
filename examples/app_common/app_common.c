@@ -843,6 +843,7 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
     MediaFrame_t frame;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
     if( pFrame != NULL )
     {
@@ -853,8 +854,11 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
         frame.size = pFrame->dataLength;
         frame.freeData = 0U;
         frame.timestampUs = pFrame->presentationUs;
-        ( void ) OnMediaSinkHook( pCustomContext,
-                                  &frame );
+        if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
+        {
+            ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
+                                                                                &frame );
+        }
     }
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
     ( void ) pCustomContext;
@@ -873,6 +877,7 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
 {
     #ifdef ENABLE_STREAMING_LOOPBACK
     MediaFrame_t frame;
+    AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
     if( pFrame != NULL )
     {
@@ -883,8 +888,11 @@ static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
         frame.size = pFrame->dataLength;
         frame.freeData = 0U;
         frame.timestampUs = pFrame->presentationUs;
-        ( void ) OnMediaSinkHook( pCustomContext,
-                                  &frame );
+        if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
+        {
+            ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
+                                                                                &frame );
+        }
     }
 
     #else /* ifdef ENABLE_STREAMING_LOOPBACK */
