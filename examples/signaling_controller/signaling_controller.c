@@ -44,6 +44,7 @@
 #define SIGNALING_CONTROLLER_SDP_EVENT_MESSAGE_NEWLINE_ENDING "\\n"
 
 #define SIGNALING_CONTROLLER_REFRESH_ICE_SERVER_CONFIGS_TIMEOUT ( 15 )
+#define SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS ( 2000 )
 
 static uint8_t AreCredentialsExpired( SignalingControllerContext_t * pCtx );
 
@@ -1375,6 +1376,7 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
             if( ret != SIGNALING_CONTROLLER_RESULT_OK )
             {
                 LogError( ( "Fail to connect with signaling controller." ) );
+                vTaskDelay( pdMS_TO_TICKS( SIGNALING_CONTROLLER_RETRY_CONNECT_TIMEOUT_MS ) );
             }
             else
             {

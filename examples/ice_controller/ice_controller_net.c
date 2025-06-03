@@ -1065,7 +1065,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
     {
         /*
          * Socket read error detected.
-         * This typically indicates the remote peer closed the connection.
+         * This typically indicates the remote peer closed the connection or WiFi disconnection.
          * Action required: Close the local socket to properly terminate the connection.
          */
         ( void ) Ice_CloseCandidate( &pCtx->iceContext, pSocketContext->pLocalCandidate );
@@ -1082,8 +1082,9 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             if( pCtx->onIceEventCallbackFunc )
             {
                 pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
                                               NULL );
+                
                 /* Re-set the timer. */
                 IceController_UpdateTimerInterval( pCtx,
                                                    ICE_CONTROLLER_CLOSING_INTERVAL_MS );
