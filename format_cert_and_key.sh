@@ -4,7 +4,7 @@
 CERT_FILE="path-to-certificate.pem.crt"
 KEY_FILE="path-to-private.pem.key"
 # Output directory and file
-OUTPUT_DIR="examples/master"
+OUTPUT_DIR="examples/demo_config"
 OUTPUT_FILE="${OUTPUT_DIR}/formatted_certificate_and_key.txt"
 
 # Macro names

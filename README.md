@@ -18,7 +18,7 @@ git submodule update --init --recursive
 ## Setup
 ### Required Configuration
 Before choosing an authentication method, configure these common settings:
-   * Copy `examples/master/demo_config_template.h` and rename it to `examples/master/demo_config.h` and set the following:
+   * Copy `examples/demo_config/demo_config_template.h` and rename it to `examples/demo_config/demo_config.h` and set the following:
    * Set `AWS_REGION` to your AWS region.
    * Set `AWS_KVS_CHANNEL_NAME` to your KVS signaling channel name.
 
@@ -38,7 +38,7 @@ Choose ONE of the following authentication options:
    * Set `AWS_IOT_THING_PRIVATE_KEY` to your IOT Core Private Key.
 
 NOTE : To add the `AWS_IOT_THING_CERT` and `AWS_IOT_THING_PRIVATE_KEY` in the correct format, run the `format_cert_and_key.sh`.\
-A `formatted_certificate_and_ket.txt` file will be generated inside the `examples/master/` path. You can copy the content and paste it in the `demo_config.h`
+A `formatted_certificate_and_ket.txt` file will be generated inside the `examples/demo_config/` path. You can copy the content and paste it in the `demo_config.h`
 
 ## Compile commands
 1. Download toolchain (based on your environment)
