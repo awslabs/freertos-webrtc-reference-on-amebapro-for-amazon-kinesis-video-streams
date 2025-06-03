@@ -270,7 +270,7 @@ PeerConnectionResult_t PeerConnectionH265Helper_WriteH265Frame( PeerConnectionSe
         resulth265 = H265Packetizer_GetPacket( &h265PacketizerContext,
                                                &packeth265 );
 
-        if( resulth265 == H265_RESULT_NO_MORE_NALUS )
+        if( resulth265 == H265_RESULT_NO_MORE_PACKETS )
         {
             PeerConnectionRollingBuffer_DiscardRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                   pRollingBufferPacket );
