@@ -1082,7 +1082,7 @@ IceControllerResult_t IceControllerNet_SendPacket( IceControllerContext_t * pCtx
             if( pCtx->onIceEventCallbackFunc )
             {
                 pCtx->onIceEventCallbackFunc( pCtx->pOnIceEventCustomContext,
-                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSING,
+                                              ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY,
                                               NULL );
                 
                 /* Re-set the timer. */

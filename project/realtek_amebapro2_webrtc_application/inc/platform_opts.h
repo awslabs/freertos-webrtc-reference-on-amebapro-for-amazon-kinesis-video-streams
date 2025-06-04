@@ -113,7 +113,7 @@
 
 
 /* AUTO RECONNECT Setting */
-#define AUTO_RECONNECT_COUNT	8
+#define AUTO_RECONNECT_COUNT	__UINT8_MAX__               // 255 times
 #define AUTO_RECONNECT_INTERVAL	5 // in sec
 
 /* For SSL/TLS */

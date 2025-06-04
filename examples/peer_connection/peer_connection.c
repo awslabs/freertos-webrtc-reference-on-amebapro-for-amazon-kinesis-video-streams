@@ -281,7 +281,7 @@ static void OnCloseSessionTimerExpire( void * pParameter )
         EmptyMessageQueue( &pSession->requestQueue );
 
         ( void ) SendPeerConnectionEvent( pSession,
-                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE_NO_ICE_FLOW,
                                           NULL,
                                           0 );
 
@@ -363,6 +363,9 @@ static PeerConnectionResult_t HandleRequest( PeerConnectionSession_t * pSession,
                                                                     &requestMsg );
                 break;
             case PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE:
+                PeerConnection_CloseSession( pSession );
+                break;
+            case PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE_NO_ICE_FLOW:
                 PeerConnection_CloseSession( pSession );
 
                 /* Reset the state to init for next peer since ICE negotiation has not started yet */
@@ -621,6 +624,32 @@ static int32_t OnIceEventClosed( PeerConnectionSession_t * pSession )
     return ret;
 }
 
+static int32_t OnIceEventPeerConnectionClose( PeerConnectionSession_t * pSession )
+{
+    int32_t ret = 0;
+    PeerConnectionResult_t result;
+
+    if( pSession == NULL )
+    {
+        LogError( ( "Invalid input, pSession: %p", pSession ) );
+        ret = -10;
+    }
+
+    if( ret == 0 )
+    {
+        result = SendPeerConnectionEvent( pSession,
+                                          PEER_CONNECTION_SESSION_REQUEST_TYPE_PEER_CONNECTION_CLOSE,
+                                          NULL,
+                                          0 );
+        if( result != PEER_CONNECTION_RESULT_OK )
+        {
+            ret = -11;
+        }
+    }
+
+    return ret;
+}
+
 static int32_t HandleDtlsTermination( PeerConnectionSession_t * pSession )
 {
     int32_t ret = 0;
@@ -734,7 +763,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 break;
             case ICE_CONTROLLER_CB_EVENT_ICE_CLOSE_NOTIFY:
                 /* Trigger peer connection close flow because of ICE event. */
-                PeerConnection_CloseSession( pSession );
+                ret = OnIceEventPeerConnectionClose( pSession );
                 break;
             default:
                 LogError( ( "Unknown event: %d", event ) );
