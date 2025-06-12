@@ -1656,7 +1656,6 @@ WebsocketResult_t Websocket_Disconnect( NetworkingWslayContext_t * pWebsocketCtx
     {
         if( pWebsocketCtx->wslayContext != NULL )
         {
-            pWebsocketCtx->connectionEstablished = 0U;
             pWebsocketCtx->connectionCloseRequested = 0U;
 
             /* Shutdown WebSocket read operations */
