@@ -60,8 +60,8 @@ extern int max_skb_buf_num;
 #define VIDEO_5M    8
 #define VIDEO_2K    9
 
-/* Audio sending is always enabled, but audio receiving is not tested. */
-#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 0 )
+/* Audio sending is always enabled, audio receiving is now configured and enabled. */
+#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 1 )
 
 /*****************************************************************************
 * ISP channel : 0
