@@ -73,7 +73,7 @@
 
 #define AWS_MAX_VIEWER_NUM ( 2 )
 
-/* Audio format setting. */
+/* Audio codec setting. */
 #define AUDIO_G711_MULAW 1
 #define AUDIO_G711_ALAW 0
 #define AUDIO_OPUS 0
@@ -81,7 +81,7 @@
 #error only one of audio format should be set
 #endif
 
-/* Video format setting. */
+/* Video codec setting. */
 #define USE_VIDEO_CODEC_H264 1
 #define USE_VIDEO_CODEC_H265 0
 #if ( USE_VIDEO_CODEC_H264 + USE_VIDEO_CODEC_H265 ) != 1
