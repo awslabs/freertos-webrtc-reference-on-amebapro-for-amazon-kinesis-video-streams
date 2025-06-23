@@ -153,7 +153,7 @@ BaseType_t TCP_Sockets_Connect( Socket_t * pTcpSocket,
                       pxCur->ai_protocol );
         if( xFd < 0 )
         {
-            LogError( ( "Failed to create new socket." ) );
+            LogError( ( "Failed to create new socket, Error code: %d", errno ) );
             xRet = TCP_SOCKETS_ERRNO_ENOMEM;
             continue;
         }

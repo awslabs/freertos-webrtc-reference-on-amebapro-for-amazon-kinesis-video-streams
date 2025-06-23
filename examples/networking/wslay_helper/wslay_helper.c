@@ -1774,9 +1774,10 @@ WebsocketResult_t Websocket_Recv( NetworkingWslayContext_t * pWebsocketCtx )
 
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
+        /* If connection is asked to close by server, set the return code to non-ok
+           to start disconnection flow. */
         if( pWebsocketCtx->connectionCloseRequested != 0U )
         {
-            ( void ) Websocket_Disconnect( pWebsocketCtx );
             ret = NETWORKING_WSLAY_RESULT_CONNETION_CLOSED;
         }
     }
@@ -1798,12 +1799,11 @@ WebsocketResult_t Websocket_Recv( NetworkingWslayContext_t * pWebsocketCtx )
             ret = SendWebsocketPing( pWebsocketCtx );
             pWebsocketCtx->lastPingTick = currentTick;
         }
+    }
 
-        if( ret != NETWORKING_WSLAY_RESULT_OK )
-        {
-            ( void ) Websocket_Disconnect( pWebsocketCtx );
-            ret = NETWORKING_WSLAY_RESULT_CONNETION_CLOSED;
-        }
+    if( ret != NETWORKING_WSLAY_RESULT_OK )
+    {
+        ( void ) Websocket_Disconnect( pWebsocketCtx );
     }
 
     return ret;

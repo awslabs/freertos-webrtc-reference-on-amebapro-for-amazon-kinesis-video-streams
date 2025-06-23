@@ -110,7 +110,7 @@ BaseType_t UDP_Sockets_Connect( Socket_t * pUdpSocket,
         xFd = ( *pUdpSocket )->xFd;
         if( xFd < 0 )
         {
-            LogError( ( "Failed to create new socket." ) );
+            LogError( ( "Failed to create new socket, Error code: %d", errno ) );
             xRet = UDP_SOCKETS_ERRNO_ENOMEM;
             continue;
         }
