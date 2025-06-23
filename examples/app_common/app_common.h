@@ -67,6 +67,8 @@ typedef struct AppContext
     /* Media context. */
     InitTransceiverFunc_t initTransceiverFunc;
     AppMediaSourcesContext_t * pAppMediaSourcesContext;
+
+    IceControllerNatTraversalConfig_t natTraversalConfig;
 } AppContext_t;
 
 int AppCommon_Init( AppContext_t * pAppContext,

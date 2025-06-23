@@ -231,7 +231,7 @@ static int32_t StartPeerConnectionSession( AppContext_t * pAppContext,
         #endif /* #if defined( AWS_CA_CERT_PEM ) */
 
         pcConfig.canTrickleIce = 1U;
-        pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
+        pcConfig.natTraversalConfigBitmap = pAppContext->natTraversalConfig;
 
         ret = GetIceServerList( pAppContext,
                                 pcConfig.iceServers,
@@ -748,7 +748,7 @@ static int32_t InitializeAppSession( AppContext_t * pAppContext,
             0,
             sizeof( PeerConnectionSessionConfiguration_t ) );
     pcConfig.canTrickleIce = 1U;
-    pcConfig.natTraversalConfigBitmap = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
+    pcConfig.natTraversalConfigBitmap = pAppContext->natTraversalConfig;
 
     peerConnectionResult = PeerConnection_Init( &pAppSession->peerConnectionSession,
                                                 &pcConfig );
@@ -1436,6 +1436,7 @@ int AppCommon_Init( AppContext_t * pAppContext,
         Sctp_Init();
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
 
+        pAppContext->natTraversalConfig = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
         pAppContext->initTransceiverFunc = initTransceiverFunc;
         pAppContext->pAppMediaSourcesContext = pMediaContext;
     }
