@@ -531,9 +531,10 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
         #if ( AUDIO_OPUS )
         TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
                                   TRANSCEIVER_RTC_CODEC_OPUS_BIT );
-        #else
+        #elif ( AUDIO_G711_MULAW )
         TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
                                   TRANSCEIVER_RTC_CODEC_MULAW_BIT );
+        #elif ( AUDIO_G711_ALAW )
         TRANSCEIVER_ENABLE_CODEC( pAudioTranceiver->codecBitMap,
                                   TRANSCEIVER_RTC_CODEC_ALAW_BIT );
         #endif
