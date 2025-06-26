@@ -18,6 +18,7 @@
 #include "demo_config.h"
 #include "ameba_pro2_media_port.h"
 #include "platform_opts.h"
+#include <math.h>
 
 #include "mmf2_link.h"
 #include "mmf2_siso.h"
@@ -28,7 +29,9 @@
 #include "module_g711.h"
 #include "module_opusc.h"
 #include "module_opusd.h"
+#include "module_array.h"
 #include "opus_defines.h"
+#include "opus.h"
 
 #include "avcodec.h"
 
@@ -36,10 +39,100 @@
 
 #include "FreeRTOS.h"
 #include "networking_utils.h"
+#include "queue.h"
+#include "semphr.h"
 
 #if METRIC_PRINT_ENABLED
 #include "metric.h"
 #endif
+
+/* Audio sending and receiving both enabled using MMF */
+#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 1 )
+
+/* MMF Array Module for dynamic audio injection */
+#if MEDIA_PORT_ENABLE_AUDIO_RECV
+
+/* Audio frame buffer for dynamic injection */
+static uint8_t * pAudioFrameBuffer = NULL;
+static size_t audioFrameBufferSize = 0;
+static SemaphoreHandle_t audioFrameMutex = NULL;
+
+/* Function to handle received audio frames through MMF Array Module */
+int32_t AppMediaSourcePort_PlayAudioFrame( uint8_t *pData, size_t dataLen )
+{
+    static int frame_count = 0;
+    frame_count++;
+    
+    if (frame_count % 50 == 0) { // Log every 50th frame to avoid spam
+        LogInfo(("MMF: Received audio frame %d, size: %d bytes", frame_count, dataLen));
+    }
+    
+    /* Take mutex to protect buffer access */
+    if (audioFrameMutex != NULL && xSemaphoreTake(audioFrameMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        /* Reallocate buffer if needed */
+        if (audioFrameBufferSize < dataLen) {
+            if (pAudioFrameBuffer != NULL) {
+                vPortFree(pAudioFrameBuffer);
+            }
+            pAudioFrameBuffer = (uint8_t*)pvPortMalloc(dataLen);
+            if (pAudioFrameBuffer != NULL) {
+                audioFrameBufferSize = dataLen;
+            } else {
+                audioFrameBufferSize = 0;
+                LogError(("Failed to allocate audio frame buffer"));
+                xSemaphoreGive(audioFrameMutex);
+                return -1;
+            }
+        }
+        
+        /* Copy received frame to buffer */
+        if (pAudioFrameBuffer != NULL) {
+            memcpy(pAudioFrameBuffer, pData, dataLen);
+            
+            /* Update array module with new audio data */
+            extern mm_context_t * pArrayContext;
+            if (pArrayContext != NULL) {
+                array_t audioArray;
+                audioArray.data_addr = (uint32_t)pAudioFrameBuffer;
+                audioArray.data_len = dataLen;
+                
+                /* Stop streaming temporarily */
+                mm_module_ctrl(pArrayContext, CMD_ARRAY_STREAMING, 0);
+                
+                /* Small delay to help AEC synchronization */
+                vTaskDelay(pdMS_TO_TICKS(1));
+                
+                /* Update array data */
+                mm_module_ctrl(pArrayContext, CMD_ARRAY_SET_ARRAY, (int)&audioArray);
+                
+                /* Restart streaming */
+                mm_module_ctrl(pArrayContext, CMD_ARRAY_STREAMING, 1);
+                
+                LogDebug(("Audio frame injected into MMF pipeline: %d bytes", dataLen));
+            }
+        }
+        
+        xSemaphoreGive(audioFrameMutex);
+    } else {
+        LogWarn(("Could not acquire audio frame mutex"));
+        return -1;
+    }
+    
+    return 0;
+}
+
+#else /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+
+/* Stub implementation when audio receive is disabled */
+int32_t AppMediaSourcePort_PlayAudioFrame( uint8_t *pData, size_t dataLen )
+{
+    (void)pData;
+    (void)dataLen;
+    LogDebug(("Audio playback disabled - received frame ignored"));
+    return 0;
+}
+
+#endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
 /* used to monitor skb resource */
 extern int skbbuf_used_num;
@@ -59,9 +152,6 @@ extern int max_skb_buf_num;
 #define VIDEO_3M    7
 #define VIDEO_5M    8
 #define VIDEO_2K    9
-
-/* Audio sending is always enabled, but audio receiving is not tested. */
-#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 0 )
 
 /*****************************************************************************
 * ISP channel : 0
@@ -107,14 +197,17 @@ static mm_context_t * pOpuscContext = NULL;
 static mm_context_t * pOpusdContext = NULL;
 #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 #endif /* AUDIO_OPUS */
+#if MEDIA_PORT_ENABLE_AUDIO_RECV
+mm_context_t * pArrayContext = NULL;  /* Array module for audio injection */
+#endif
 static mm_context_t * pWebrtcMmContext = NULL;
 
 static mm_siso_t * pSisoAudioA1 = NULL;
-static mm_miso_t * pMisoWebrtc = NULL;
 #if MEDIA_PORT_ENABLE_AUDIO_RECV
-static mm_siso_t * pSisoWebrtcA2 = NULL;
-static mm_siso_t * pSisoAudioA2 = NULL;
+static mm_siso_t * pSisoArrayDecoder = NULL;  /* Array -> Decoder pipeline */
+static mm_siso_t * pSisoDecoderAudio = NULL;  /* Decoder -> Audio pipeline */
 #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+static mm_miso_t * pMisoWebrtc = NULL;
 
 static video_params_t videoParams = {
     .stream_id = MEDIA_PORT_V1_CHANNEL,
@@ -133,13 +226,16 @@ static video_params_t videoParams = {
 static audio_params_t audioParams = {
     .sample_rate = ASR_8KHZ,
     .word_length = WL_16BIT,
-    .mic_gain = MIC_0DB,
+    .mic_gain = MIC_30DB,  // Reduce mic gain to minimize echo pickup
     .dmic_l_gain = DMIC_BOOST_24DB,
     .dmic_r_gain = DMIC_BOOST_24DB,
     .use_mic_type = USE_AUDIO_AMIC,
     .channel = 1,
-    .mix_mode = 0,
-    .enable_aec = 0
+    .mix_mode = 1,     // Enable mix mode for bidirectional audio
+    .enable_aec = 1,   // Enable AEC for proper bidirectional audio operation
+    .ADC_gain = 0x55,  // Reduce ADC gain for less sensitive microphone
+    .DAC_gain = 0x8F,  // Moderate DAC gain for clear but not overpowering speaker output
+    .hpf_set = 1       // Enable high-pass filter to remove low-frequency noise
 };
 #endif
 
@@ -161,28 +257,41 @@ static g711_params_t g711dParams = {
 
 #if ( AUDIO_OPUS )
 static opusc_params_t opuscParams = {
-    .sample_rate = 8000, // 16000
+    .sample_rate = 8000,
     .channel = 1,
-    .bit_length = 16,    // 16 recommand
-    .complexity = 5,     // 0~10
-    .bitrate = 25000,    // default 25000
-    .use_framesize = 40, // 10 // needs to the same or bigger than AUDIO_DMA_PAGE_SIZE/(sample_rate/1000)/2 but less than 60
+    .bit_length = 16,
+    .complexity = 5,     // Restore original complexity for better quality
+    .bitrate = 25000,
+    .use_framesize = 40, // Use 40ms frame size to prevent buffer overflow
     .enable_vbr = 1,
     .vbr_constraint = 0,
     .packetLossPercentage = 0,
-    .opus_application = OPUS_APPLICATION_AUDIO
+    .opus_application = OPUS_APPLICATION_VOIP  // Use VOIP mode for better real-time performance
 };
 
 #if MEDIA_PORT_ENABLE_AUDIO_RECV
 static opusd_params_t opusdParams = {
-    .sample_rate = 8000, // 16000
+    .sample_rate = 8000,
     .channel = 1,
-    .bit_length = 16,         // 16 recommand
-    .frame_size_in_msec = 10, // will not be uused
-    .with_opus_enc = 1,       // enable semaphore if the application with opus encoder
+    .bit_length = 16,
     .opus_application = OPUS_APPLICATION_AUDIO
 };
+
+/* Array module parameters for Opus audio injection */
+static array_params_t opusArrayParams = {
+    .type = AVMEDIA_TYPE_AUDIO,
+    .codec_id = AV_CODEC_ID_OPUS,
+    .mode = ARRAY_MODE_ONCE,  /* Play once per injection, not loop */
+    .u = {
+        .a = {
+            .channel = 1,
+            .samplerate = 8000,
+            .frame_size = 320,  /* 40ms @ 8kHz = 320 samples */
+        }
+    }
+};
 #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+
 #endif /* AUDIO_OPUS */
 
 static int HandleModuleFrameHook( void * p,
@@ -219,11 +328,19 @@ static int HandleModuleFrameHook( void * p,
     MediaModuleContext_t * pCtx = ( MediaModuleContext_t * )p;
     MediaFrame_t frame;
     mm_queue_item_t * pInputItem = ( mm_queue_item_t * )input;
+    mm_queue_item_t * pOutputItem = ( mm_queue_item_t * )output;
 
-    ( void ) output;
+    ( void ) pOutputItem;
 
     if( pCtx->mediaStart != 0 )
     {
+        /* Debug: Log all frames coming to WebRTC module */
+        static int total_frame_count = 0;
+        total_frame_count++;
+        if (total_frame_count % 100 == 0) {
+            LogInfo(("WebRTC module received %d total frames", total_frame_count));
+        }
+        
         do
         {
             /* Set SKB buffer threshold to manage memory allocation. Reference:
@@ -239,7 +356,7 @@ static int HandleModuleFrameHook( void * p,
             frame.pData = ( uint8_t * ) pvPortMalloc( frame.size );
             if( !frame.pData )
             {
-                LogWarn( ( "Fail to allocate memory for webrtc media frame, size: %lu", frame.size ) );
+                LogWarn( ( "Fail to allocate memory for webrtc media frame" ) );
                 ret = -1;
                 break;
             }
@@ -268,11 +385,24 @@ static int HandleModuleFrameHook( void * p,
             else if( ( pInputItem->type == AV_CODEC_ID_OPUS ) ||
                      ( pInputItem->type == AV_CODEC_ID_PCMU ) )
             {
+                /* Debug: Log audio frame details */
+                static int audio_frame_count = 0;
+                audio_frame_count++;
+                if (audio_frame_count % 10 == 0) {
+                    LogInfo(("Audio frame #%d: type=0x%lx, size=%lu", audio_frame_count, (unsigned long)pInputItem->type, (unsigned long)frame.size));
+                }
+                
                 if( pCtx->onAudioFrameReadyToSendFunc )
                 {
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
                     ( void ) pCtx->onAudioFrameReadyToSendFunc( pCtx->pOnAudioFrameReadyToSendCustomContext,
                                                                 &frame );
+                    /* Add periodic logging to verify audio is being sent */
+                    static int audio_send_count = 0;
+                    audio_send_count++;
+                    if (audio_send_count % 10 == 0) {
+                        LogInfo(("Audio frame sent to viewer - frame size: %lu bytes", (unsigned long)frame.size));
+                    }
                 }
                 else
                 {
@@ -283,7 +413,11 @@ static int HandleModuleFrameHook( void * p,
             }
             else
             {
-                LogWarn( ( "Input type cannot be handled: %ld", pInputItem->type ) );
+                static int unknown_frame_count = 0;
+                unknown_frame_count++;
+                if (unknown_frame_count % 10 == 0) {
+                    LogWarn( ( "Input type cannot be handled: type=0x%lx, size=%lu (count=%d)", (unsigned long)pInputItem->type, (unsigned long)frame.size, unknown_frame_count ) );
+                }
                 vPortFree( frame.pData );
                 ret = -1;
             }
@@ -325,8 +459,9 @@ static int ControlModuleHook( void * p,
         case CMD_KVS_WEBRTC_REG_AUDIO_SEND_CALLBACK_CUSTOM_CONTEXT:
             pCtx->pOnAudioFrameReadyToSendCustomContext = ( void * ) arg;
             break;
+
         default:
-            LogWarn( ( "Unknown module command: %d", cmd ) );
+            LogWarn( ( "Unknown module command" ) );
             break;
     }
     return 0;
@@ -337,6 +472,7 @@ static void * DestroyModuleHook( void * p )
     MediaModuleContext_t * ctx = ( MediaModuleContext_t * )p;
     if( ctx )
     {
+
         vPortFree( ctx );
     }
     return NULL;
@@ -375,12 +511,18 @@ void AppMediaSourcePort_Destroy( void )
 {
     // Pause Linkers
     siso_pause( pSisoAudioA1 );
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( pSisoArrayDecoder )
+    {
+        siso_pause( pSisoArrayDecoder );
+    }
+    if( pSisoDecoderAudio )
+    {
+        siso_pause( pSisoDecoderAudio );
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
     miso_pause( pMisoWebrtc,
                 MM_OUTPUT );
-    #if MEDIA_PORT_ENABLE_AUDIO_RECV
-    siso_pause( pSisoWebrtcA2 );
-    siso_pause( pSisoAudioA2 );
-    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     // Stop modules
     mm_module_ctrl( pWebrtcMmContext,
@@ -392,14 +534,28 @@ void AppMediaSourcePort_Destroy( void )
     mm_module_ctrl( pAudioContext,
                     CMD_AUDIO_SET_TRX,
                     0 );
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( pArrayContext )
+    {
+        mm_module_ctrl( pArrayContext,
+                        CMD_ARRAY_STREAMING,
+                        0 );
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     // Delete linkers
     pSisoAudioA1 = siso_delete( pSisoAudioA1 );
-    pMisoWebrtc = miso_delete( pMisoWebrtc );
     #if MEDIA_PORT_ENABLE_AUDIO_RECV
-    pSisoWebrtcA2 = siso_delete( pSisoWebrtcA2 );
-    pSisoAudioA2 = siso_delete( pSisoAudioA2 );
+    if( pSisoArrayDecoder )
+    {
+        pSisoArrayDecoder = siso_delete( pSisoArrayDecoder );
+    }
+    if( pSisoDecoderAudio )
+    {
+        pSisoDecoderAudio = siso_delete( pSisoDecoderAudio );
+    }
     #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+    pMisoWebrtc = miso_delete( pMisoWebrtc );
 
     // Close modules
     pWebrtcMmContext = mm_module_close( pWebrtcMmContext );
@@ -416,6 +572,32 @@ void AppMediaSourcePort_Destroy( void )
     pOpusdContext = mm_module_close( pOpusdContext );
     #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
     #endif
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( pArrayContext )
+    {
+        pArrayContext = mm_module_close( pArrayContext );
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+
+    // Clean up audio frame buffer and mutex
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( audioFrameMutex != NULL )
+    {
+        if( xSemaphoreTake( audioFrameMutex, pdMS_TO_TICKS(100) ) == pdTRUE )
+        {
+            if( pAudioFrameBuffer != NULL )
+            {
+                vPortFree( pAudioFrameBuffer );
+                pAudioFrameBuffer = NULL;
+            }
+            audioFrameBufferSize = 0;
+            xSemaphoreGive( audioFrameMutex );
+        }
+        vSemaphoreDelete( audioFrameMutex );
+        audioFrameMutex = NULL;
+        LogInfo( ( "Audio frame buffer and mutex cleaned up" ) );
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     // Video Deinit
     video_deinit();
@@ -431,11 +613,13 @@ int32_t AppMediaSourcePort_Init( void )
     {
         mm_module_ctrl( pWebrtcMmContext,
                         MM_CMD_SET_QUEUE_LEN,
-                        6 );
+                        3 );
         mm_module_ctrl( pWebrtcMmContext,
                         MM_CMD_INIT_QUEUE_ITEMS,
                         MMQI_FLAG_STATIC );
         mm_module_ctrl( pWebrtcMmContext, CMD_KVS_WEBRTC_SET_APPLY, 0 );
+        
+
     }
     else
     {
@@ -450,7 +634,7 @@ int32_t AppMediaSourcePort_Init( void )
                                               0, 0, 0, 0, 0,
                                               0, 0, 0 );
         ( void ) voe_heap_size;
-        LogInfo( ( "voe heap size = %d", voe_heap_size ) );
+        LogInfo( ( "voe heap size initialized" ) );
     }
 
     if( ret == 0 )
@@ -490,13 +674,33 @@ int32_t AppMediaSourcePort_Init( void )
             #endif
             mm_module_ctrl( pAudioContext,
                             MM_CMD_SET_QUEUE_LEN,
-                            6 );
+                            3 );  // Restore standard queue length
             mm_module_ctrl( pAudioContext,
                             MM_CMD_INIT_QUEUE_ITEMS,
                             MMQI_FLAG_STATIC );
             mm_module_ctrl( pAudioContext,
                             CMD_AUDIO_APPLY,
                             0 );
+            /* Enable both transmit (capture) and receive (playback) */
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_TRX,
+                            1 );  // Enable both TX and RX for bidirectional audio
+            
+            /* Enhanced AEC configuration for better echo cancellation */
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AEC_ENABLE,
+                            1 );  // Ensure AEC is enabled
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AEC_LEVEL,
+                            3 );  // Set AEC to aggressive level (0-3, 3 is most aggressive)
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_NS_ENABLE,
+                            2 );  // Enable noise suppression (moderate level)
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AGC_ENABLE,
+                            1 );  // Enable automatic gain control
+            
+            LogInfo(("Audio bidirectional system started with enhanced AEC (capture + playback)"));
         }
         else
         {
@@ -526,9 +730,34 @@ int32_t AppMediaSourcePort_Init( void )
         }
         else
         {
-            LogError( ( "G711 open fail" ) );
+            LogError( ( "G711 encoder open fail" ) );
             ret = -1;
         }
+        
+        #if MEDIA_PORT_ENABLE_AUDIO_RECV
+        pG711dContext = mm_module_open( &g711_module );
+        if( pG711dContext )
+        {
+            mm_module_ctrl( pG711dContext,
+                            CMD_G711_SET_PARAMS,
+                            ( int )&g711dParams );
+            mm_module_ctrl( pG711dContext,
+                            MM_CMD_SET_QUEUE_LEN,
+                            6 );
+            mm_module_ctrl( pG711dContext,
+                            MM_CMD_INIT_QUEUE_ITEMS,
+                            MMQI_FLAG_STATIC );
+            mm_module_ctrl( pG711dContext,
+                            CMD_G711_APPLY,
+                            0 );
+        }
+        else
+        {
+            LogError( ( "G711 decoder open fail" ) );
+            ret = -1;
+        }
+        #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+        
         #elif AUDIO_OPUS
         pOpuscContext = mm_module_open( &opusc_module );
         if( pOpuscContext )
@@ -538,7 +767,7 @@ int32_t AppMediaSourcePort_Init( void )
                             ( int )&opuscParams );
             mm_module_ctrl( pOpuscContext,
                             MM_CMD_SET_QUEUE_LEN,
-                            6 );
+                            6 );  // Restore standard queue length
             mm_module_ctrl( pOpuscContext,
                             MM_CMD_INIT_QUEUE_ITEMS,
                             MMQI_FLAG_STATIC );
@@ -548,14 +777,104 @@ int32_t AppMediaSourcePort_Init( void )
         }
         else
         {
-            LogError( ( "OPUSC open fail" ) );
+            LogError( ( "OPUSC encoder open fail" ) );
             ret = -1;
         }
+        
+        #if MEDIA_PORT_ENABLE_AUDIO_RECV
+        pOpusdContext = mm_module_open( &opusd_module );
+        if( pOpusdContext )
+        {
+            mm_module_ctrl( pOpusdContext,
+                            CMD_OPUSD_SET_PARAMS,
+                            ( int )&opusdParams );
+            mm_module_ctrl( pOpusdContext,
+                            MM_CMD_SET_QUEUE_LEN,
+                            6 );
+            mm_module_ctrl( pOpusdContext,
+                            MM_CMD_INIT_QUEUE_ITEMS,
+                            MMQI_FLAG_STATIC );
+            mm_module_ctrl( pOpusdContext,
+                            CMD_OPUSD_APPLY,
+                            0 );
+        }
+        else
+        {
+            LogError( ( "OPUSD decoder open fail" ) );
+            ret = -1;
+        }
+        #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+        
         #endif
+    }
+
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( ret == 0 )
+    {
+        /* Initialize audio frame buffer mutex */
+        audioFrameMutex = xSemaphoreCreateMutex();
+        if( audioFrameMutex == NULL )
+        {
+            LogError( ( "Failed to create audio frame mutex" ) );
+            ret = -1;
+        }
+        else
+        {
+            LogInfo( ( "Audio frame mutex created successfully" ) );
+        }
     }
 
     if( ret == 0 )
     {
+        /* Initialize Array Module for dynamic audio injection */
+        pArrayContext = mm_module_open( &array_module );
+        if( pArrayContext )
+        {
+            #if AUDIO_OPUS
+            mm_module_ctrl( pArrayContext,
+                            CMD_ARRAY_SET_PARAMS,
+                            ( int )&opusArrayParams );
+            #elif ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            /* Configure array for G.711 if using G.711 codec */
+            array_params_t g711ArrayParams = {
+                .type = AVMEDIA_TYPE_AUDIO,
+                .codec_id = AV_CODEC_ID_PCMU,
+                .mode = ARRAY_MODE_ONCE,
+                .u = {
+                    .a = {
+                        .channel = 1,
+                        .samplerate = 8000,
+                        .frame_size = 160,  /* 20ms @ 8kHz = 160 samples */
+                    }
+                }
+            };
+            mm_module_ctrl( pArrayContext,
+                            CMD_ARRAY_SET_PARAMS,
+                            ( int )&g711ArrayParams );
+            #endif
+            mm_module_ctrl( pArrayContext,
+                            MM_CMD_SET_QUEUE_LEN,
+                            6 );
+            mm_module_ctrl( pArrayContext,
+                            MM_CMD_INIT_QUEUE_ITEMS,
+                            MMQI_FLAG_DYNAMIC );
+            mm_module_ctrl( pArrayContext,
+                            CMD_ARRAY_APPLY,
+                            0 );
+            /* Don't start streaming yet - will be controlled by frame injection */
+            LogInfo( ( "Array module for audio injection initialized" ) );
+        }
+        else
+        {
+            LogError( ( "Array module open fail" ) );
+            ret = -1;
+        }
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
+
+    if( ret == 0 )
+    {
+        /* Audio capture pipeline: Audio -> Encoder -> WebRTC */
         pSisoAudioA1 = siso_create();
         if( pSisoAudioA1 )
         {
@@ -575,17 +894,86 @@ int32_t AppMediaSourcePort_Init( void )
                        0 );
             siso_ctrl( pSisoAudioA1,
                        MMIC_CMD_SET_STACKSIZE,
-                       24 * 1024,
+                       32 * 1024,
                        0 );
             #endif
             siso_start( pSisoAudioA1 );
+            LogInfo(("Audio capture pipeline started"));
         }
         else
         {
-            LogError( ( "pSisoAudioA1 open fail" ) );
+            LogError( ( "Audio capture pipeline creation fail" ) );
             ret = -1;
         }
     }
+
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( ret == 0 )
+    {
+        /* Audio playback pipeline: Array -> Decoder */
+        pSisoArrayDecoder = siso_create();
+        if( pSisoArrayDecoder )
+        {
+            siso_ctrl( pSisoArrayDecoder,
+                       MMIC_CMD_ADD_INPUT,
+                       ( uint32_t )pArrayContext,
+                       0 );
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            siso_ctrl( pSisoArrayDecoder,
+                       MMIC_CMD_ADD_OUTPUT,
+                       ( uint32_t )pG711dContext,
+                       0 );
+            #elif AUDIO_OPUS
+            siso_ctrl( pSisoArrayDecoder,
+                       MMIC_CMD_ADD_OUTPUT,
+                       ( uint32_t )pOpusdContext,
+                       0 );
+            siso_ctrl( pSisoArrayDecoder,
+                       MMIC_CMD_SET_STACKSIZE,
+                       24 * 1024,
+                       0 );
+            #endif
+            siso_start( pSisoArrayDecoder );
+            LogInfo(("Audio playback pipeline: Array -> Decoder"));
+        }
+        else
+        {
+            LogError( ( "Audio playback Array->Decoder pipeline creation fail" ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        /* Audio playback pipeline: Decoder -> Audio Module */
+        pSisoDecoderAudio = siso_create();
+        if( pSisoDecoderAudio )
+        {
+            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
+            siso_ctrl( pSisoDecoderAudio,
+                       MMIC_CMD_ADD_INPUT,
+                       ( uint32_t )pG711dContext,
+                       0 );
+            #elif AUDIO_OPUS
+            siso_ctrl( pSisoDecoderAudio,
+                       MMIC_CMD_ADD_INPUT,
+                       ( uint32_t )pOpusdContext,
+                       0 );
+            #endif
+            siso_ctrl( pSisoDecoderAudio,
+                       MMIC_CMD_ADD_OUTPUT,
+                       ( uint32_t )pAudioContext,
+                       0 );
+            siso_start( pSisoDecoderAudio );
+            LogInfo(("Audio playback pipeline: Decoder -> Audio Module"));
+        }
+        else
+        {
+            LogError( ( "Audio playback Decoder->Audio pipeline creation fail" ) );
+            ret = -1;
+        }
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     if( ret == 0 )
     {
@@ -629,113 +1017,10 @@ int32_t AppMediaSourcePort_Init( void )
     #if MEDIA_PORT_ENABLE_AUDIO_RECV
     if( ret == 0 )
     {
-        #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
-        pG711dContext = mm_module_open( &g711_module );
-        if( pG711dContext )
-        {
-            mm_module_ctrl( pG711dContext,
-                            CMD_G711_SET_PARAMS,
-                            ( int )&g711dParams );
-            mm_module_ctrl( pG711dContext,
-                            MM_CMD_SET_QUEUE_LEN,
-                            6 );
-            mm_module_ctrl( pG711dContext,
-                            MM_CMD_INIT_QUEUE_ITEMS,
-                            MMQI_FLAG_STATIC );
-            mm_module_ctrl( pG711dContext,
-                            CMD_G711_APPLY,
-                            0 );
-        }
-        else
-        {
-            LogError( ( "G711 open fail" ) );
-            ret = -1;
-        }
-        #elif AUDIO_OPUS
-        pOpusdContext = mm_module_open( &opusd_module );
-        if( pOpusdContext )
-        {
-            mm_module_ctrl( pOpusdContext,
-                            CMD_OPUSD_SET_PARAMS,
-                            ( int )&opusdParams );
-            mm_module_ctrl( pOpusdContext,
-                            MM_CMD_SET_QUEUE_LEN,
-                            6 );
-            mm_module_ctrl( pOpusdContext,
-                            MM_CMD_INIT_QUEUE_ITEMS,
-                            MMQI_FLAG_STATIC );
-            mm_module_ctrl( pOpusdContext,
-                            CMD_OPUSD_APPLY,
-                            0 );
-        }
-        else
-        {
-            LogError( ( "OPUSD open fail" ) );
-            ret = -1;
-        }
-        #endif
-    }
-
-    if( ret == 0 )
-    {
-        pSisoWebrtcA2 = siso_create();
-        if( pSisoWebrtcA2 )
-        {
-            siso_ctrl( pSisoWebrtcA2,
-                       MMIC_CMD_ADD_INPUT,
-                       ( uint32_t )pWebrtcMmContext,
-                       0 );
-            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
-            siso_ctrl( pSisoWebrtcA2,
-                       MMIC_CMD_ADD_OUTPUT,
-                       ( uint32_t )pG711dContext,
-                       0 );
-            #elif AUDIO_OPUS
-            siso_ctrl( pSisoWebrtcA2,
-                       MMIC_CMD_ADD_OUTPUT,
-                       ( uint32_t )pOpusdContext,
-                       0 );
-            siso_ctrl( pSisoWebrtcA2,
-                       MMIC_CMD_SET_STACKSIZE,
-                       24 * 1024,
-                       0 );
-            #endif
-            siso_start( pSisoWebrtcA2 );
-        }
-        else
-        {
-            LogError( ( "pSisoWebrtcA2 open fail" ) );
-            ret = -1;
-        }
-    }
-
-    if( ret == 0 )
-    {
-        pSisoAudioA2 = siso_create();
-        if( pSisoAudioA2 )
-        {
-            #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
-            siso_ctrl( pSisoAudioA2,
-                       MMIC_CMD_ADD_INPUT,
-                       ( uint32_t )pG711dContext,
-                       0 );
-            #elif AUDIO_OPUS
-            siso_ctrl( pSisoAudioA2,
-                       MMIC_CMD_ADD_INPUT,
-                       ( uint32_t )pOpusdContext,
-                       0 );
-            #endif
-            siso_ctrl( pSisoAudioA2,
-                       MMIC_CMD_ADD_OUTPUT,
-                       ( uint32_t )pAudioContext,
-                       0 );
-            siso_start( pSisoAudioA2 );
-        }
-        else
-        {
-            LogError( ( "pSisoAudioA2 open fail" ) );
-            ret = -1;
-        }
+        LogInfo(("MMF bidirectional audio system initialized successfully"));
+        LogInfo(("Capture: Audio -> Encoder -> WebRTC"));
+        LogInfo(("Playback: Array -> Decoder -> Audio"));
+        LogInfo(("Ready for dynamic audio frame injection"));
     }
     #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
@@ -786,3 +1071,5 @@ void AppMediaSourcePort_Stop( void )
     Metric_EndEvent( METRIC_EVENT_MEDIA_PORT_STOP );
     #endif
 }
+
+

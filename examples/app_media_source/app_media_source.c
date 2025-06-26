@@ -554,3 +554,20 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
 
     return ret;
 }
+
+int32_t AppMediaSource_PlayAudioFrame( AppMediaSourcesContext_t * pAppMediaSourceContext, uint8_t * pData, size_t dataLen )
+{
+    int32_t ret = 0;
+
+    if( ( pAppMediaSourceContext == NULL ) || ( pData == NULL ) || ( dataLen == 0 ) )
+    {
+        LogError( ( "Invalid input" ) );
+        ret = -1;
+    }
+    else
+    {
+        ret = AppMediaSourcePort_PlayAudioFrame( pData, dataLen );
+    }
+
+    return ret;
+}
