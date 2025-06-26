@@ -19,7 +19,6 @@
 
 #include "mmf2_module.h"
 #include "app_media_source_port.h"
-
 #define CMD_KVS_WEBRTC_SET_PARAMS                               MM_MODULE_CMD( 0x00 )
 #define CMD_KVS_WEBRTC_GET_PARAMS                               MM_MODULE_CMD( 0x01 )
 #define CMD_KVS_WEBRTC_SET_APPLY                                MM_MODULE_CMD( 0x02 )
