@@ -64,6 +64,8 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTranceiver );
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
+int32_t AppMediaSource_PlayAudioFrame( AppMediaSourcesContext_t * pAppMediaSourceContext, uint8_t * pData, size_t dataLen );
+int32_t AppMediaSource_Stop( AppMediaSourcesContext_t * pAppMediaSourceContext );
 
 #ifdef __cplusplus
 }
