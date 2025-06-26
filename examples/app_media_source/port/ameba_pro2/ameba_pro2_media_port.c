@@ -525,6 +525,13 @@ static int HandleModuleFrameHook( void * p,
 
     if( pCtx->mediaStart != 0 )
     {
+        /* Debug: Log all frames coming to WebRTC module */
+        static int total_frame_count = 0;
+        total_frame_count++;
+        if (total_frame_count % 100 == 0) {
+            LogInfo(("WebRTC module received %d total frames", total_frame_count));
+        }
+        
         do
         {
             /* Set SKB buffer threshold to manage memory allocation. Reference:
@@ -569,6 +576,13 @@ static int HandleModuleFrameHook( void * p,
             else if( ( pInputItem->type == AV_CODEC_ID_OPUS ) ||
                      ( pInputItem->type == AV_CODEC_ID_PCMU ) )
             {
+                /* Debug: Log audio frame details */
+                static int audio_frame_count = 0;
+                audio_frame_count++;
+                if (audio_frame_count % 10 == 0) {
+                    LogInfo(("Audio frame #%d: type=0x%lx, size=%lu", audio_frame_count, (unsigned long)pInputItem->type, (unsigned long)frame.size));
+                }
+                
                 if( pCtx->onAudioFrameReadyToSendFunc )
                 {
                     frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
@@ -577,7 +591,7 @@ static int HandleModuleFrameHook( void * p,
                     /* Add periodic logging to verify audio is being sent */
                     static int audio_send_count = 0;
                     audio_send_count++;
-                    if (audio_send_count % 50 == 0) {
+                    if (audio_send_count % 10 == 0) {
                         LogInfo(("Audio frame sent to viewer - frame size: %lu bytes", (unsigned long)frame.size));
                     }
                 }
@@ -590,7 +604,11 @@ static int HandleModuleFrameHook( void * p,
             }
             else
             {
-                LogWarn( ( "Input type cannot be handled" ) );
+                static int unknown_frame_count = 0;
+                unknown_frame_count++;
+                if (unknown_frame_count % 10 == 0) {
+                    LogWarn( ( "Input type cannot be handled: type=0x%lx, size=%lu (count=%d)", (unsigned long)pInputItem->type, (unsigned long)frame.size, unknown_frame_count ) );
+                }
                 vPortFree( frame.pData );
                 ret = -1;
             }
