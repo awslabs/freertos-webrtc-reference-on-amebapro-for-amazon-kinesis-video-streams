@@ -99,6 +99,9 @@ int32_t AppMediaSourcePort_PlayAudioFrame( uint8_t *pData, size_t dataLen )
                 /* Stop streaming temporarily */
                 mm_module_ctrl(pArrayContext, CMD_ARRAY_STREAMING, 0);
                 
+                /* Small delay to help AEC synchronization */
+                vTaskDelay(pdMS_TO_TICKS(1));
+                
                 /* Update array data */
                 mm_module_ctrl(pArrayContext, CMD_ARRAY_SET_ARRAY, (int)&audioArray);
                 
@@ -223,13 +226,16 @@ static video_params_t videoParams = {
 static audio_params_t audioParams = {
     .sample_rate = ASR_8KHZ,
     .word_length = WL_16BIT,
-    .mic_gain = MIC_40DB,  // Maximum mic gain for better pickup
+    .mic_gain = MIC_30DB,  // Reduce mic gain to minimize echo pickup
     .dmic_l_gain = DMIC_BOOST_24DB,
     .dmic_r_gain = DMIC_BOOST_24DB,
     .use_mic_type = USE_AUDIO_AMIC,
     .channel = 1,
     .mix_mode = 1,     // Enable mix mode for bidirectional audio
-    .enable_aec = 1    // Enable AEC for proper bidirectional audio operation
+    .enable_aec = 1,   // Enable AEC for proper bidirectional audio operation
+    .ADC_gain = 0x55,  // Reduce ADC gain for less sensitive microphone
+    .DAC_gain = 0x8F,  // Moderate DAC gain for clear but not overpowering speaker output
+    .hpf_set = 1       // Enable high-pass filter to remove low-frequency noise
 };
 #endif
 
@@ -679,7 +685,22 @@ int32_t AppMediaSourcePort_Init( void )
             mm_module_ctrl( pAudioContext,
                             CMD_AUDIO_SET_TRX,
                             1 );  // Enable both TX and RX for bidirectional audio
-            LogInfo(("Audio bidirectional system started (capture + playback)"));
+            
+            /* Enhanced AEC configuration for better echo cancellation */
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AEC_ENABLE,
+                            1 );  // Ensure AEC is enabled
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AEC_LEVEL,
+                            3 );  // Set AEC to aggressive level (0-3, 3 is most aggressive)
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_NS_ENABLE,
+                            2 );  // Enable noise suppression (moderate level)
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_AGC_ENABLE,
+                            1 );  // Enable automatic gain control
+            
+            LogInfo(("Audio bidirectional system started with enhanced AEC (capture + playback)"));
         }
         else
         {
