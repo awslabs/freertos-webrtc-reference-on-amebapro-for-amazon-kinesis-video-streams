@@ -48,6 +48,7 @@ extern int max_local_skb_num;
 extern int max_skb_buf_num;
 
 #define MEDIA_PORT_SKB_BUFFER_THRESHOLD ( 64 )
+#define MEDIA_PORT_WEBRTC_AUDIO_FRAME_SIZE ( 256 )
 
 #define VIDEO_QCIF  0
 #define VIDEO_CIF   1
@@ -59,9 +60,6 @@ extern int max_skb_buf_num;
 #define VIDEO_3M    7
 #define VIDEO_5M    8
 #define VIDEO_2K    9
-
-/* Audio sending is always enabled, but audio receiving is not tested. */
-#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 0 )
 
 /*****************************************************************************
 * ISP channel : 0
@@ -139,7 +137,7 @@ static audio_params_t audioParams = {
     .use_mic_type = USE_AUDIO_AMIC,
     .channel = 1,
     .mix_mode = 0,
-    .enable_aec = 0
+    .enable_record = 0
 };
 #endif
 
@@ -360,14 +358,20 @@ static void * CreateModuleHook( void * parent )
 static void * NewModuleItemHook( void * p )
 {
     ( void ) p;
-    return NULL;
+
+    return ( void * ) pvPortMalloc( MEDIA_PORT_WEBRTC_AUDIO_FRAME_SIZE * 2 );
 }
 
 static void * DeleteModuleItemHook( void * p,
                                     void * d )
 {
     ( void ) p;
-    ( void ) d;
+
+    if( d != NULL )
+    {
+        vPortFree( d );
+    }
+
     return NULL;
 }
 
@@ -785,4 +789,53 @@ void AppMediaSourcePort_Stop( void )
     #if METRIC_PRINT_ENABLED
     Metric_EndEvent( METRIC_EVENT_MEDIA_PORT_STOP );
     #endif
+}
+
+void AppMediaSourcePort_PlayAudioFrame( MediaFrame_t * pFrame )
+{
+    uint8_t skipProcess = 0U;
+    mm_queue_item_t *output_item;
+
+    if( pFrame == NULL )
+    {
+        LogError( ( "Invalid input, pFrame: %p", pFrame ) );
+        skipProcess = 1U;
+    }
+    else if( pFrame->trackKind != TRANSCEIVER_TRACK_KIND_AUDIO )
+    {
+        LogError( ( "Dropping non-audio frame, track kind: %d", pFrame->trackKind ) );
+        skipProcess = 1U;
+    }
+    else
+    {
+        /* Empty else marker. */
+    }
+
+    if( skipProcess == 0U )
+    {
+        LogDebug( ( "Playing audio frame with length: %lu", pFrame->size ) );
+
+        if( xQueueReceive( pWebrtcMmContext->output_recycle, &output_item, 0xFFFFFFFF) == pdTRUE )
+        {
+            memcpy( ( void * )output_item->data_addr, ( void * ) pFrame->pData, pFrame->size );
+
+            #if AUDIO_G711_MULAW
+                output_item->type = AV_CODEC_ID_PCMU;
+            #elif AUDIO_G711_ALAW
+                output_item->type = AV_CODEC_ID_PCMA;
+            #elif AUDIO_OPUS
+                output_item->type = AV_CODEC_ID_OPUS;
+            #else
+                #error "Audio codec is not configured."
+            #endif
+
+            output_item->size = pFrame->size;
+            output_item->timestamp = pFrame->timestampUs;
+            xQueueSend( pWebrtcMmContext->output_ready, (void *)&output_item, 0xFFFFFFFF );
+        }
+        else
+        {
+            LogWarn( ( "No free output queue item for frame type: %d", AV_CODEC_ID_OPUS ) );
+        }
+    }
 }
