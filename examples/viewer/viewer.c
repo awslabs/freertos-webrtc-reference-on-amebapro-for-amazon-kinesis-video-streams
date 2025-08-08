@@ -39,7 +39,7 @@
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
 
-static void Master_Task( void * pParameter );
+static void Viewer_Task( void * pParameter );
 
 static int32_t InitTransceiver( void * pMediaCtx,
                                 TransceiverTrackKind_t trackKind,
@@ -175,13 +175,15 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
     return ret;
 }
 
-static void Master_Task( void * pParameter )
+static void Viewer_Task( void * pParameter )
 {
     int32_t ret = 0;
+    int clientIdLength = 0;
+    uint32_t randomClientIdPostfix = 0;
 
     ( void ) pParameter;
 
-    LogInfo( ( "Start Master_Task." ) );
+    LogInfo( ( "Start Viewer_Task." ) );
 
     ret = AppCommon_Init( &appContext, InitTransceiver, &appMediaSourceContext );
 
@@ -192,8 +194,27 @@ static void Master_Task( void * pParameter )
 
     if( ret == 0 )
     {
+        /* Configure signaling controller with client ID and role type. */
+        randomClientIdPostfix = rand() & 0xFFFFFFFFU;
+        clientIdLength = snprintf( &( appContext.signalingControllerClientId[ 0 ] ),
+                                   sizeof( appContext.signalingControllerClientId ),
+                                   "%s%lu",
+                                   SIGNALING_CONTROLLER_VIEWER_CLIENT_ID_PREFIX,
+                                   randomClientIdPostfix );
+        appContext.signalingControllerClientIdLength = clientIdLength;
+        appContext.signalingControllerRole = SIGNALING_ROLE_VIEWER;
+
+        if( clientIdLength < 0 )
+        {
+            LogError( ( "snprintf return failure, errno: %d", errno ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
         /* Launch application with current thread serving as Signaling Controller. */
-        ret = AppCommon_Start( &appContext );
+        ret = AppCommon_StartSignalingController( &appContext );
     }
 
     for( ;; )
@@ -215,14 +236,14 @@ void app_example( void )
 
     if( ret == 0 )
     {
-        if( xTaskCreate( Master_Task,
-                         ( ( const char * ) "MasterTask" ),
-                         20480,
+        if( xTaskCreate( Viewer_Task,
+                         ( ( const char * ) "ViewerTask" ),
+                         4096,
                          NULL,
                          tskIDLE_PRIORITY + 4,
                          NULL ) != pdPASS )
         {
-            LogError( ( "xTaskCreate(Master_Task) failed" ) );
+            LogError( ( "xTaskCreate(Viewer_Task) failed" ) );
             ret = -1;
         }
     }

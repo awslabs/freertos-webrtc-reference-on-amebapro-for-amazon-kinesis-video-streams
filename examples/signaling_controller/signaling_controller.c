@@ -257,6 +257,16 @@ static SignalingControllerResult_t HttpSend( SignalingControllerContext_t * pCtx
     return ret;
 }
 
+static void OnConnectionStateChange( SignalingControllerContext_t * pCtx,
+                                     SignalingControllerConnectionState_t newState )
+{
+    if( ( pCtx->connectionStateCallback != NULL ) && ( pCtx->connectionState != newState ) )
+    {
+        pCtx->connectionState = newState;
+        pCtx->connectionStateCallback( newState, pCtx->pConnectionStateCallbacCustomContext );
+    }
+}
+
 static SignalingControllerResult_t SignalingController_WebsocketInit( SignalingControllerContext_t * pCtx )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
@@ -752,7 +762,7 @@ static SignalingControllerResult_t GetSignalingChannelEndpoints( SignalingContro
     {
         endpointRequestInfo.protocols |= SIGNALING_PROTOCOL_WEBRTC;
     }
-    endpointRequestInfo.role = SIGNALING_ROLE_MASTER;
+    endpointRequestInfo.role = pCtx->role;
 
     retSignal = Signaling_ConstructGetSignalingChannelEndpointRequest( &awsRegion, &endpointRequestInfo, &signalRequest );
 
@@ -868,8 +878,9 @@ static SignalingControllerResult_t GetIceServerConfigs( SignalingControllerConte
     // Create the API url
     getIceServerConfigRequestInfo.channelArn.pChannelArn = &( pCtx->signalingChannelArn[ 0 ] );
     getIceServerConfigRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    getIceServerConfigRequestInfo.pClientId = "ProducerMaster";
-    getIceServerConfigRequestInfo.clientIdLength = strlen( "ProducerMaster" );
+    getIceServerConfigRequestInfo.pClientId = pCtx->pClientId;
+    getIceServerConfigRequestInfo.clientIdLength = pCtx->clientIdLength;
+
     retSignal = Signaling_ConstructGetIceServerConfigRequest( &signalingChannelHttpEndpoint, &getIceServerConfigRequestInfo, &signalRequest );
 
     if( retSignal != SIGNALING_RESULT_OK )
@@ -938,13 +949,10 @@ static SignalingControllerResult_t ConnectToWssEndpoint( SignalingControllerCont
     memset( &wssEndpointRequestInfo, 0, sizeof( ConnectWssEndpointRequestInfo_t ) );
     wssEndpointRequestInfo.channelArn.pChannelArn = pCtx->signalingChannelArn;
     wssEndpointRequestInfo.channelArn.channelArnLength = pCtx->signalingChannelArnLength;
-    wssEndpointRequestInfo.role = SIGNALING_ROLE_MASTER;
-    // TODO: for viewer
-    // if(wssEndpointRequestInfo.role == SIGNALING_ROLE_VIEWER)
-    // {
-    //     wssEndpointRequestInfo.pClientId = pCtx->channelInfo.;
-    //     wssEndpointRequestInfo.clientIdLength = strlen(pSignalingClient->clientInfo.signalingClientInfo.clientId);
-    // }
+    wssEndpointRequestInfo.role = pCtx->role;
+    wssEndpointRequestInfo.pClientId = pCtx->pClientId;
+    wssEndpointRequestInfo.clientIdLength = pCtx->clientIdLength;
+
     retSignal = Signaling_ConstructConnectWssEndpointRequest( &wssEndpoint, &wssEndpointRequestInfo, &signalRequest );
 
     if( retSignal != SIGNALING_RESULT_OK )
@@ -1172,6 +1180,11 @@ SignalingControllerResult_t SignalingController_Init( SignalingControllerContext
         }
     }
 
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_INITED );
+    }
+
     return ret;
 }
 
@@ -1296,7 +1309,12 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
     /* Print metric. */
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_CONNECTED );
         LogSignalingInfo( pCtx );
+    }
+    else
+    {
+        OnConnectionStateChange( pCtx, SIGNALING_CONTROLLER_STATE_DISCONNECTED );
     }
 
     return ret;
@@ -1343,6 +1361,10 @@ SignalingControllerResult_t SignalingController_ConnectServers( SignalingControl
 
     pCtx->enableStorageSession = pConnectInfo->enableStorageSession;
 
+    pCtx->pClientId = pConnectInfo->pClientId;
+    pCtx->clientIdLength = pConnectInfo->clientIdLength;
+    pCtx->role = pConnectInfo->role;
+
     ret = ConnectToSignalingService( pCtx );
 
     if( ret != SIGNALING_CONTROLLER_RESULT_OK )
@@ -1365,6 +1387,19 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
     if( ( pCtx == NULL ) || ( pConnectInfo == NULL ) )
     {
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+    else if( ( pConnectInfo->role == SIGNALING_ROLE_VIEWER ) &&
+             ( pConnectInfo->enableStorageSession != 0U ) )
+    {
+        /* Viewer doesn't support Join Storage Session.
+         * Refer to https://docs.aws.amazon.com/kinesisvideostreams-webrtc-dg/latest/devguide/getting-started-ingestion.html
+         * for more detail. */
+        LogError( ( "Viewer doesn't support Join Storage Session." ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
@@ -1492,11 +1527,11 @@ SignalingControllerResult_t SignalingController_QueryIceServerConfigs( Signaling
     return ret;
 }
 
-SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMessage( const char * pEventMessage,
-                                                                                     size_t eventMessageLength,
-                                                                                     uint8_t isSdpOffer,
-                                                                                     const char ** ppSdpMessage,
-                                                                                     size_t * pSdpMessageLength )
+SignalingControllerResult_t SignalingController_ExtractSdpMessageFromSignalingMessage( const char * pEventMessage,
+                                                                                       size_t eventMessageLength,
+                                                                                       uint8_t isSdpOffer,
+                                                                                       const char ** ppSdpMessage,
+                                                                                       size_t * pSdpMessageLength )
 {
     SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
     JSONStatus_t jsonResult;
@@ -1530,7 +1565,6 @@ SignalingControllerResult_t SignalingController_ExtractSdpOfferFromSignalingMess
 
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
-        /* Check if it's SDP offer. */
         jsonResult = JSON_Iterate( pEventMessage, eventMessageLength, &start, &next, &pair );
 
         while( jsonResult == JSONSuccess )
@@ -1718,6 +1752,27 @@ SignalingControllerResult_t SignalingController_SerializeSdpContentNewline( cons
     if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         *pEventSdpMessageLength = outputLength;
+    }
+
+    return ret;
+}
+
+SignalingControllerResult_t SignalingController_SetConnectionStateCallback( SignalingControllerContext_t * pCtx,
+                                                                            SignalingControllerConnectionStateCallback_t callback,
+                                                                            void * pCustomContext )
+{
+    SignalingControllerResult_t ret = SIGNALING_CONTROLLER_RESULT_OK;
+
+    if( pCtx == NULL )
+    {
+        LogError( ( "Invalid input: pCtx is NULL" ) );
+        ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
+    }
+
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
+    {
+        pCtx->connectionStateCallback = callback;
+        pCtx->pConnectionStateCallbacCustomContext = pCustomContext;
     }
 
     return ret;
