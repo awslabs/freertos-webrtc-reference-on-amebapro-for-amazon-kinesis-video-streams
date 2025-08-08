@@ -233,6 +233,10 @@ static void SignalingController_Task( void * pParameter )
         connectInfo.messageReceivedCallback = OnSignalingMessageReceived;
         connectInfo.pMessageReceivedCallbackData = pAppContext;
 
+        connectInfo.role = pAppContext->signalingControllerRole;
+        connectInfo.pClientId = pAppContext->signalingControllerClientId;
+        connectInfo.clientIdLength = pAppContext->signalingControllerClientIdLength;
+
         #if defined( AWS_ACCESS_KEY_ID )
             connectInfo.awsCreds.pAccessKeyId = AWS_ACCESS_KEY_ID;
             connectInfo.awsCreds.accessKeyIdLength = strlen( AWS_ACCESS_KEY_ID );
