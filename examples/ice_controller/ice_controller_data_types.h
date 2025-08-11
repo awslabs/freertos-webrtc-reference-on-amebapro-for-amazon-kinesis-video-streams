@@ -329,6 +329,22 @@ typedef struct IceControllerInitConfig
     void * pOnRecvNonStunPacketCallbackContext;
 } IceControllerInitConfig_t;
 
+typedef struct IceControllerStartConfig
+{
+    const char * pLocalUserName;
+    size_t localUserNameLength;
+    const char * pLocalPassword;
+    size_t localPasswordLength;
+    const char * pRemoteUserName;
+    size_t remoteUserNameLength;
+    const char * pRemotePassword;
+    size_t remotePasswordLength;
+    const char * pCombinedName;
+    size_t combinedNameLength;
+
+    uint8_t isControlling;
+} IceControllerStartConfig_t;
+
 typedef struct IceControllerContext
 {
     IceControllerState_t state;

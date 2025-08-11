@@ -1024,21 +1024,17 @@ PeerConnectionResult_t PeerConnectionSdp_DeserializeSdpMessage( PeerConnectionBu
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        if( pBufferSessionDescription->type == SDP_CONTROLLER_MESSAGE_TYPE_OFFER )
+        if( ( pBufferSessionDescription->type == SDP_CONTROLLER_MESSAGE_TYPE_OFFER ) ||
+            ( pBufferSessionDescription->type == SDP_CONTROLLER_MESSAGE_TYPE_ANSWER ) )
         {
-            retSdpController = SdpController_DeserializeSdpOffer( pBufferSessionDescription->pSdpBuffer,
-                                                                  pBufferSessionDescription->sdpBufferLength,
-                                                                  &pBufferSessionDescription->sdpDescription );
+            retSdpController = SdpController_DeserializeSdpMessage( pBufferSessionDescription->pSdpBuffer,
+                                                                    pBufferSessionDescription->sdpBufferLength,
+                                                                    &pBufferSessionDescription->sdpDescription );
             if( retSdpController != SDP_CONTROLLER_RESULT_OK )
             {
                 LogError( ( "Unable to deserialize SDP offer, result: %d", retSdpController ) );
                 ret = PEER_CONNECTION_RESULT_FAIL_SDP_DESERIALIZE_OFFER;
             }
-        }
-        else if( pBufferSessionDescription->type == SDP_CONTROLLER_MESSAGE_TYPE_ANSWER )
-        {
-            LogError( ( "Parsing the SDP answer is not supported now." ) );
-            ret = PEER_CONNECTION_RESULT_UNKNOWN_SDP_TYPE;
         }
         else
         {
@@ -1084,37 +1080,30 @@ PeerConnectionResult_t PeerConnectionSdp_SetPayloadTypes( PeerConnectionSession_
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
-        if( pRemoteBufferSessionDescription->type == SDP_CONTROLLER_MESSAGE_TYPE_OFFER )
+        /* If it's SDP offer from remote peer, we should set the codec based on remote codec set. */
+        for( i = 0; i < pRemoteBufferSessionDescription->sdpDescription.mediaCount; i++ )
         {
-            /* If it's SDP offer from remote peer, we should set the codec based on remote codec set. */
-            for( i = 0; i < pRemoteBufferSessionDescription->sdpDescription.mediaCount; i++ )
+            ret = GetPayloadTypesFromMedia( &pRemoteBufferSessionDescription->sdpDescription.mediaDescriptions[i],
+                                            &remoteMediaCodecBitMap,
+                                            remoteCodecPayloads );
+            if( ret != PEER_CONNECTION_RESULT_OK )
             {
-                ret = GetPayloadTypesFromMedia( &pRemoteBufferSessionDescription->sdpDescription.mediaDescriptions[i],
-                                                &remoteMediaCodecBitMap,
-                                                remoteCodecPayloads );
-                if( ret != PEER_CONNECTION_RESULT_OK )
-                {
-                    LogWarn( ( "Fail to get payload types from media idx: %d", i ) );
-                    ret = PEER_CONNECTION_RESULT_FAIL_SDP_GET_PAYLOAD_TYPES;
-                    continue;
-                }
-
-                ret = SetPayloadType( pSession,
-                                      &pRemoteBufferSessionDescription->sdpDescription.mediaDescriptions[i],
-                                      &remoteMediaCodecBitMap,
-                                      remoteCodecPayloads,
-                                      isTransceiverCodecSet );
-                if( ret != PEER_CONNECTION_RESULT_OK )
-                {
-                    LogWarn( ( "Fail to set payload type, ret: %d", ret ) );
-                    ret = PEER_CONNECTION_RESULT_FAIL_SDP_SET_PAYLOAD_TYPE;
-                    continue;
-                }
+                LogWarn( ( "Fail to get payload types from media idx: %d", i ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_SDP_GET_PAYLOAD_TYPES;
+                continue;
             }
-        }
-        else
-        {
-            /* TODO: Otherwise, we can simply use default codec. */
+
+            ret = SetPayloadType( pSession,
+                                  &pRemoteBufferSessionDescription->sdpDescription.mediaDescriptions[i],
+                                  &remoteMediaCodecBitMap,
+                                  remoteCodecPayloads,
+                                  isTransceiverCodecSet );
+            if( ret != PEER_CONNECTION_RESULT_OK )
+            {
+                LogWarn( ( "Fail to set payload type, ret: %d", ret ) );
+                ret = PEER_CONNECTION_RESULT_FAIL_SDP_SET_PAYLOAD_TYPE;
+                continue;
+            }
         }
     }
 

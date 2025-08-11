@@ -33,8 +33,15 @@
 #include "app_media_source.h"
 #include "logging.h"
 
-#define DEMO_MASTER_CLIENT_ID "ProduceMaster"
-#define DEMO_MASTER_CLIENT_ID_LENGTH ( 13 )
+#if METRIC_PRINT_ENABLED
+#include "metric.h"
+#endif
+
+#if ENABLE_SCTP_DATA_CHANNEL
+    #include "peer_connection_sctp.h"
+
+    #define WEBRTC_APPLICATION_VIEWER_DATA_CHANNEL_NAME ( "TEST_DATA_CHANNEL" )
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
 
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
@@ -54,7 +61,7 @@ static int32_t InitTransceiver( void * pMediaCtx,
                                 Transceiver_t * pTranceiver )
 {
     int32_t ret = 0;
-    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * )pMediaCtx;
+    AppMediaSourcesContext_t * pMediaSourceContext = ( AppMediaSourcesContext_t * ) pMediaCtx;
 
     if( ( pMediaCtx == NULL ) || ( pTranceiver == NULL ) )
     {
@@ -175,6 +182,129 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
     return ret;
 }
 
+static int SendSdpOffer( AppContext_t * pAppContext )
+{
+    int ret = 0;
+    PeerConnectionResult_t peerConnectionResult;
+    AppSession_t * pAppSession = NULL;
+    PeerConnectionBufferSessionDescription_t bufferSessionDescription;
+    SignalingControllerEventMessage_t signalingMessageSdpOffer = {
+        .event = SIGNALING_CONTROLLER_EVENT_SEND_WSS_MESSAGE,
+        .onCompleteCallback = NULL,
+        .pOnCompleteCallbackContext = NULL,
+    };
+    size_t sdpOfferMessageLength = 0;
+    SignalingControllerResult_t signalingControllerReturn;
+
+    /* Use AppCommon_GetPeerConnectionSession to initialize peer connection, including transceivers. */
+    pAppSession = AppCommon_GetPeerConnectionSession( pAppContext,
+                                                      NULL,
+                                                      0U );
+    if( pAppSession == NULL )
+    {
+        LogError( ( "Fail to get available peer connection session" ) );
+        ret = -1;
+    }
+
+#if ENABLE_SCTP_DATA_CHANNEL
+    /* Add data channel support to SDP offer */
+    if( ret == 0 )
+    {
+        peerConnectionResult = PeerConnection_AddDataChannel( &pAppSession->peerConnectionSession );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to add data channel, result = %d.", peerConnectionResult ) );
+            ret = -2;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        PeerConnectionDataChannel_t * pChannel = NULL;
+        peerConnectionResult = PeerConnectionSCTP_CreateDataChannel( &pAppSession->peerConnectionSession,
+                                                                     WEBRTC_APPLICATION_VIEWER_DATA_CHANNEL_NAME,
+                                                                     NULL,
+                                                                     &pChannel );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to create data channel, result = %d.", peerConnectionResult ) );
+            ret = -3;
+        }
+    }
+#endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+    /* Set local description. */
+    if( ret == 0 )
+    {
+        memset( &bufferSessionDescription, 0, sizeof( bufferSessionDescription ) );
+        bufferSessionDescription.pSdpBuffer = pAppContext->sdpBuffer;
+        bufferSessionDescription.sdpBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
+        bufferSessionDescription.type = SDP_CONTROLLER_MESSAGE_TYPE_OFFER;
+        peerConnectionResult = PeerConnection_SetLocalDescription( &pAppSession->peerConnectionSession,
+                                                                   &bufferSessionDescription );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to set local description, result: %d", peerConnectionResult ) );
+            ret = -4;
+        }
+    }
+
+    /* Create offer. */
+    if( ret == 0 )
+    {
+        pAppContext->sdpConstructedBufferLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
+        peerConnectionResult = PeerConnection_CreateOffer( &pAppSession->peerConnectionSession,
+                                                           &bufferSessionDescription,
+                                                           pAppContext->sdpConstructedBuffer,
+                                                           &pAppContext->sdpConstructedBufferLength );
+        if( peerConnectionResult != PEER_CONNECTION_RESULT_OK )
+        {
+            LogError( ( "Fail to create offer, result: %d", peerConnectionResult ) );
+            ret = -5;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        /* Translate from SDP formal format into signaling event message by replacing newline with "\\n" or "\\r\\n". */
+        sdpOfferMessageLength = PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH;
+        signalingControllerReturn = SignalingController_SerializeSdpContentNewline( pAppContext->sdpConstructedBuffer,
+                                                                                    pAppContext->sdpConstructedBufferLength,
+                                                                                    pAppContext->sdpBuffer,
+                                                                                    &sdpOfferMessageLength );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            LogError( ( "Fail to serialize SDP offer newline, result: %d, constructed buffer(%u): %.*s",
+                        signalingControllerReturn,
+                        pAppContext->sdpConstructedBufferLength,
+                        ( int ) pAppContext->sdpConstructedBufferLength,
+                        pAppContext->sdpConstructedBuffer ) );
+            ret = -6;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        signalingMessageSdpOffer.eventContent.correlationIdLength = 0U;
+        memset( signalingMessageSdpOffer.eventContent.correlationId, 0, SECRET_ACCESS_KEY_MAX_LEN );
+        signalingMessageSdpOffer.eventContent.messageType = SIGNALING_TYPE_MESSAGE_SDP_OFFER;
+        signalingMessageSdpOffer.eventContent.pDecodeMessage = pAppContext->sdpBuffer;
+        signalingMessageSdpOffer.eventContent.decodeMessageLength = sdpOfferMessageLength;
+        memset( signalingMessageSdpOffer.eventContent.remoteClientId, 0, SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH );
+        signalingMessageSdpOffer.eventContent.remoteClientIdLength = 0U;
+
+        signalingControllerReturn = SignalingController_SendMessage( &( pAppContext->signalingControllerContext ),
+                                                                     &signalingMessageSdpOffer );
+        if( signalingControllerReturn != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            ret = -7;
+            LogError( ( "Send signaling message fail, result: %d", signalingControllerReturn ) );
+        }
+    }
+
+    return ret;
+}
+
 static void Viewer_Task( void * pParameter )
 {
     int32_t ret = 0;
@@ -217,6 +347,24 @@ static void Viewer_Task( void * pParameter )
         ret = AppCommon_StartSignalingController( &appContext );
     }
 
+    if( ret == 0 )
+    {
+        #if METRIC_PRINT_ENABLED
+            Metric_StartEvent( METRIC_EVENT_SENDING_FIRST_FRAME );
+        #endif
+
+        /* keep looping to establish viewer connection. */
+        ret = SendSdpOffer( &appContext );
+
+        while( appContext.appSessions[0].peerConnectionSession.state >= PEER_CONNECTION_SESSION_STATE_START )
+        {
+            /* The session is still alive, keep processing. */
+            vTaskDelay( pdMS_TO_TICKS( 10000 ) );
+        }
+
+        LogInfo( ( "Ending viewer" ) );
+    }
+
     for( ;; )
     {
         vTaskDelay( pdMS_TO_TICKS( 200 ) );
@@ -238,7 +386,7 @@ void app_example( void )
     {
         if( xTaskCreate( Viewer_Task,
                          ( ( const char * ) "ViewerTask" ),
-                         4096,
+                         16384,
                          NULL,
                          tskIDLE_PRIORITY + 4,
                          NULL ) != pdPASS )

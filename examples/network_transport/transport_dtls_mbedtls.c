@@ -380,12 +380,12 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkConte
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
     int32_t mbedtlsError = 0;
 
-    configASSERT( pNetworkContext != NULL );
-    configASSERT( pNetworkContext->pParams != NULL );
+    configASSERT( pDtlsNetworkContext != NULL );
+    configASSERT( pDtlsNetworkContext->pParams != NULL );
     configASSERT( pNetworkCredentials != NULL );
     // configASSERT( pNetworkCredentials->pRootCa != NULL );
 
-    pDtlsTransportParams = pNetworkContext->pParams;
+    pDtlsTransportParams = pDtlsNetworkContext->pParams;
     /* Initialize the mbed DTLS context structures. */
     DtlsSslContextInit( &( pDtlsTransportParams->dtlsSslContext ) );
 
@@ -416,7 +416,7 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkConte
 
     if( returnStatus == DTLS_SUCCESS )
     {
-        pDtlsTransportParams = pNetworkContext->pParams;
+        pDtlsTransportParams = pDtlsNetworkContext->pParams;
 
         /* Initialize the mbed DTLS secured connection context. */
         mbedtlsError = mbedtls_ssl_setup( &( pDtlsTransportParams->dtlsSslContext.context ),

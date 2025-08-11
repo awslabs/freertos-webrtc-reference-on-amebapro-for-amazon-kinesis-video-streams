@@ -263,7 +263,14 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         srtp_policy_setter( &receivePolicy.rtp );
         srtcp_policy_setter( &receivePolicy.rtcp );
 
-        receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        if( pSession->dtlsSession.isServer == 0U )
+        {
+            receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        }
+        else
+        {
+            receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        }
         receivePolicy.ssrc.type = ssrc_any_inbound;
         receivePolicy.next = NULL;
 
@@ -282,7 +289,14 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         srtp_policy_setter( &transmitPolicy.rtp );
         srtcp_policy_setter( &transmitPolicy.rtcp );
 
-        transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        if( pSession->dtlsSession.isServer == 0U )
+        {
+            transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        }
+        else
+        {
+            transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        }
         transmitPolicy.ssrc.type = ssrc_any_outbound;
         transmitPolicy.next = NULL;
 
