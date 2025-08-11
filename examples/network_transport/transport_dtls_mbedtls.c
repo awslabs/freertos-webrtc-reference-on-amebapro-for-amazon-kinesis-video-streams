@@ -108,12 +108,14 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
  * @param[in] pDtlsNetworkContext Network context.
  * @param[in] pHostName Remote host name, used for server name indication.
  * @param[in] pNetworkCredentials DTLS setup parameters.
+ * @param[in] isServer The role of DTLS is server or not.
  *
  * @return #DTLS_SUCCESS, #DTLS_TRANSPORT_INSUFFICIENT_MEMORY,
  * #DTLS_TRANSPORT_INVALID_CREDENTIALS, or #DTLS_TRANSPORT_INTERNAL_ERROR.
  */
 static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkContext,
-                                        DtlsNetworkCredentials_t * pNetworkCredentials );
+                                        DtlsNetworkCredentials_t * pNetworkCredentials,
+                                        uint8_t isServer );
 
 /**
  * @brief Initialize mbedTLS.
@@ -370,8 +372,9 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
 }
 /*-----------------------------------------------------------*/
 
-static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
-                                        DtlsNetworkCredentials_t * pNetworkCredentials )
+static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pDtlsNetworkContext,
+                                        DtlsNetworkCredentials_t * pNetworkCredentials,
+                                        uint8_t isServer )
 {
     DtlsTransportParams_t * pDtlsTransportParams = NULL;
     DtlsTransportStatus_t returnStatus = DTLS_SUCCESS;
@@ -387,7 +390,7 @@ static DtlsTransportStatus_t dtlsSetup( DtlsNetworkContext_t * pNetworkContext,
     DtlsSslContextInit( &( pDtlsTransportParams->dtlsSslContext ) );
 
     mbedtlsError = mbedtls_ssl_config_defaults( &( pDtlsTransportParams->dtlsSslContext.config ),
-                                                MBEDTLS_SSL_IS_CLIENT,
+                                                isServer? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT,
                                                 MBEDTLS_SSL_TRANSPORT_DATAGRAM,
                                                 MBEDTLS_SSL_PRESET_DEFAULT );
 
@@ -1237,7 +1240,8 @@ DtlsTransportStatus_t DTLS_Init( DtlsNetworkContext_t * pNetworkContext,
     if( returnStatus == DTLS_SUCCESS )
     {
         returnStatus = dtlsSetup( pNetworkContext,
-                                  pNetworkCredentials );
+                                  pNetworkCredentials,
+                                  isServer );
     }
 
     if( returnStatus == DTLS_SUCCESS )
