@@ -602,7 +602,6 @@ int32_t dtlsFillPseudoRandomBits( uint8_t * pBuf,
     {
         if( pBuf != NULL )
         {
-
             for( i = 0; i < bufSize; i++ )
             {
                 *pBuf++ = ( uint8_t )( rand() & 0xFF );

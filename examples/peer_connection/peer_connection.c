@@ -1622,7 +1622,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
                          tempName,
                          4096,
                          &pSession->iceControllerContext,
-                         tskIDLE_PRIORITY + 3,
+                         tskIDLE_PRIORITY + 5,
                          NULL ) != pdPASS )
         {
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
