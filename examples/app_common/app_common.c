@@ -174,10 +174,6 @@ static void platform_init( void )
         vTaskDelay( pdMS_TO_TICKS( 200 ) );
         LogInfo( ( "waiting get epoch timer" ) );
     }
-
-    /* Seed random. */
-    LogInfo( ( "srand seed: %lld", sec ) );
-    srand( sec );
 }
 
 static void wifi_common_init( void )
@@ -1597,13 +1593,16 @@ int AppCommon_Init( AppContext_t * pAppContext,
         memset( pAppContext, 0, sizeof( AppContext_t ) );
         memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
 
-        srand( time( NULL ) );
-
         srtp_init();
 
         #if ENABLE_SCTP_DATA_CHANNEL
         Sctp_Init();
         #endif /* ENABLE_SCTP_DATA_CHANNEL */
+
+        /* Configure random seed. In FreeRTOS environment, Sctp_Init() calls srand() with getpid() 
+         * which always returns 0xFFFFFFFF, resulting in a fixed random sequence. Therefore, we must 
+         * call srand() after Sctp_Init() to ensure proper randomization. */
+        srand( NetworkingUtils_GetCurrentTimeSec( NULL ) );
 
         pAppContext->natTraversalConfig = ICE_CANDIDATE_NAT_TRAVERSAL_CONFIG_ALLOW_ALL;
         pAppContext->initTransceiverFunc = initTransceiverFunc;

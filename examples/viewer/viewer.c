@@ -18,7 +18,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include "crypto_api.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -326,16 +325,8 @@ static void Viewer_Task( void * pParameter )
     if( ret == 0 )
     {
         /* Configure signaling controller with client ID and role type. */
-        ret = crypto_random_generate( ( uint8_t * ) &randomClientIdPostfix, 4 );
+        randomClientIdPostfix = rand();
 
-        if( ret < 0 )
-        {
-            LogError( ( "Fail to generate random value, errno: %d", errno ) );
-        }
-    }
-
-    if( ret == 0 )
-    {
         clientIdLength = snprintf( &( appContext.signalingControllerClientId[ 0 ] ),
                                    sizeof( appContext.signalingControllerClientId ),
                                    "%s%lu",
