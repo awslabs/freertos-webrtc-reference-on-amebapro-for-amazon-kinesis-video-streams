@@ -1589,9 +1589,9 @@ WebsocketResult_t Websocket_Connect( NetworkingWslayContext_t * pWebsocketCtx,
 
             /* Check verified result in context. */
             {
-                if( ( ( connectResponseContext.headersParsed | NETWORKING_WSLAY_HTTP_HEADER_CONNECTION ) == 0 ) ||
-                    ( ( connectResponseContext.headersParsed | NETWORKING_WSLAY_HTTP_HEADER_UPGRADE ) == 0 ) ||
-                    ( ( connectResponseContext.headersParsed | NETWORKING_WSLAY_HTTP_HEADER_WEBSOCKET_ACCEPT ) == 0 ) )
+                if( ( ( connectResponseContext.headersParsed & NETWORKING_WSLAY_HTTP_HEADER_CONNECTION ) == 0 ) ||
+                    ( ( connectResponseContext.headersParsed & NETWORKING_WSLAY_HTTP_HEADER_UPGRADE ) == 0 ) ||
+                    ( ( connectResponseContext.headersParsed & NETWORKING_WSLAY_HTTP_HEADER_WEBSOCKET_ACCEPT ) == 0 ) )
                 {
                     LogError( ( "No valid response received, headersParsed=0x%x", connectResponseContext.headersParsed ) );
                     ret = NETWORKING_WSLAY_RESULT_FAIL_HTTP_PARSE_RESPONSE;
