@@ -1843,13 +1843,13 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                 pTargetRemoteSdp->sdpDescription.quickAccess.pIcePwd,
                 pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength );
         pSession->remotePassword[ pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ] = '\0';
-        snprintf( pSession->combinedName,
-                  ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
-                  "%.*s:%.*s",
-                  ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-                  pSession->remoteUserName,
-                  PEER_CONNECTION_USER_NAME_LENGTH,
-                  peerConnectionContext.localUserName );
+        ( void ) snprintf( pSession->combinedName,
+                           ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
+                           "%.*s:%.*s",
+                           ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
+                           pSession->remoteUserName,
+                           PEER_CONNECTION_USER_NAME_LENGTH,
+                           peerConnectionContext.localUserName );
         memcpy( pSession->remoteCertFingerprint,
                 pTargetRemoteSdp->sdpDescription.quickAccess.pFingerprint,
                 pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );

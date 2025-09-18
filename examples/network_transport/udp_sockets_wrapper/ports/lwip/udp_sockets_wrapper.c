@@ -95,7 +95,7 @@ BaseType_t UDP_Sockets_Connect( Socket_t * pUdpSocket,
     xHints.ai_family = AF_UNSPEC;
     xHints.ai_socktype = SOCK_DGRAM;
     xHints.ai_protocol = IPPROTO_UDP;
-    snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
+    ( void ) snprintf( xPortStr, sizeof( xPortStr ), "%d", port );
     if( getaddrinfo( pHostName, xPortStr, &xHints, &pxAddrList ) != 0 )
     {
         LogError( ( "Failed to connect to server: DNS resolution failed: Hostname=%s.",
