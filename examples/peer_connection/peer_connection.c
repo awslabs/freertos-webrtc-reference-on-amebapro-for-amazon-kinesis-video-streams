@@ -765,9 +765,6 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 /* Trigger peer connection close flow because of ICE event. */
                 ret = OnIceEventPeerConnectionClose( pSession );
                 break;
-            default:
-                LogError( ( "Unknown event: %d", event ) );
-                break;
         }
     }
 

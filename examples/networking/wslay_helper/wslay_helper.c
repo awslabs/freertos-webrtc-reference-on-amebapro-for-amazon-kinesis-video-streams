@@ -588,14 +588,13 @@ static NetworkingWslayResult_t WriteUriEncodeSecurityToken( NetworkingWslayConte
                                                             size_t * pBufferLength )
 {
     NetworkingWslayResult_t ret = NETWORKING_WSLAY_RESULT_OK;
-    size_t writtenLength;
+    int writtenLength;
     size_t encodedLength;
 
     /* X-Amz-Security-Token query parameter. */
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
         writtenLength = snprintf( *ppBuffer, *pBufferLength, "&" NETWORKING_WSLAY_STRING_SECURITY_TOKEN_PARAM_NAME "=" );
-
 
         if( writtenLength < 0 )
         {
@@ -615,7 +614,6 @@ static NetworkingWslayResult_t WriteUriEncodeSecurityToken( NetworkingWslayConte
     /* X-Amz-Security-Token value (plaintext). */
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
-
         writtenLength = snprintf( *ppBuffer, *pBufferLength, "%.*s",
                                   ( int ) pAwsCredentials->sessionTokenLength, pAwsCredentials->pSessionToken );
 

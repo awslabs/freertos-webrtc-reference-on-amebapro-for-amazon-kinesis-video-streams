@@ -81,10 +81,6 @@ static int32_t InitTransceiver( void * pMediaCtx,
                 ret = AppMediaSource_InitAudioTransceiver( pMediaSourceContext,
                                                            pTranceiver );
                 break;
-            default:
-                LogError( ( "Invalid track kind: %d", trackKind ) );
-                ret = -3;
-                break;
         }
     }
 

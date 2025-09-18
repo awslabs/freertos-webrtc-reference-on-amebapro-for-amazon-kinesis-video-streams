@@ -2700,13 +2700,6 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
                 written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
                 break;
             }
-
-            /* Since the range of trackKind is checked above the 
-             * TRANSCEIVER_TRACK_KIND_UNKNOWN and default case is not required to be handled.
-             * The labels are kept for keeping the compiler happy wrt -Werror=switch */
-            case TRANSCEIVER_TRACK_KIND_UNKNOWN:
-            default:
-                break;
         }
 
         if( written < 0 )
