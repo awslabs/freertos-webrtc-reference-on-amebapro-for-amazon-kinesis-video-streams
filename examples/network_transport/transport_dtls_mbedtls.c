@@ -709,12 +709,10 @@ int32_t DTLS_GetLocalCertificateFingerprint( DtlsSSLContext_t * pSslContext,
     }
     else
     {
-        /* Empty else marker. */
+        DTLS_CreateCertificateFingerprint( &pSslContext->clientCert,
+                                           pBuff,
+                                           buffLen );
     }
-
-    DTLS_CreateCertificateFingerprint( &pSslContext->clientCert,
-                                       pBuff,
-                                       buffLen );
 
     return retStatus;
 }
@@ -733,43 +731,37 @@ int32_t DTLS_VerifyRemoteCertificateFingerprint( DtlsSSLContext_t * pSslContext,
         LogError( ( "invalid input, pSslContext || pExpectedFingerprint == NULL || CERTIFICATE_FINGERPRINT_LENGTH < fingerprintMaxLen(%u)", fingerprintMaxLen ) );
         retStatus = -1;
     }
-    else
+
+    if( retStatus == 0 )
     {
-        /* Empty else marker. */
+        pRemoteCertificate = ( mbedtls_x509_crt * )mbedtls_ssl_get_peer_cert( &pSslContext->context );
+        if( pRemoteCertificate == NULL )
+        {
+            LogError( ( "pRemoteCertificate == NULL" ) );
+            retStatus = -1;
+        }
     }
 
-    pRemoteCertificate = ( mbedtls_x509_crt * )mbedtls_ssl_get_peer_cert( &pSslContext->context );
-    if( pRemoteCertificate == NULL )
+    if( retStatus == 0 )
     {
-        LogError( ( "pRemoteCertificate == NULL " ) );
-        retStatus = -1;
-    }
-    else
-    {
-        /* Empty else marker. */
-    }
-
-    if( DTLS_CreateCertificateFingerprint( pRemoteCertificate,
-                                           actualFingerprint,
-                                           CERTIFICATE_FINGERPRINT_LENGTH ) != 0 )
-    {
-        LogError( ( "Failed to calculate certificate fingerprint" ) );
-    }
-    else
-    {
-        /* Empty else marker. */
+        if( DTLS_CreateCertificateFingerprint( pRemoteCertificate,
+                                               actualFingerprint,
+                                               CERTIFICATE_FINGERPRINT_LENGTH ) != 0 )
+        {
+            LogError( ( "Failed to calculate certificate fingerprint" ) );
+            retStatus = -1;
+        }
     }
 
-    if( strncmp( pExpectedFingerprint,
-                 actualFingerprint,
-                 fingerprintMaxLen ) != 0 )
+    if( retStatus == 0 )
     {
-        LogError( ( "DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED \nexpected fingerprint:\n %s \nactual fingerprint:\n %s", pExpectedFingerprint, actualFingerprint ) );
-        retStatus = DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED;
-    }
-    else
-    {
-        /* Empty else marker. */
+        if( strncmp( pExpectedFingerprint,
+                     actualFingerprint,
+                     fingerprintMaxLen ) != 0 )
+        {
+            LogError( ( "DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED \nexpected fingerprint:\n %s \nactual fingerprint:\n %s", pExpectedFingerprint, actualFingerprint ) );
+            retStatus = DTLS_SSL_REMOTE_CERTIFICATE_VERIFICATION_FAILED;
+        }
     }
 
     return retStatus;
@@ -800,26 +792,29 @@ int32_t DTLS_PopulateKeyingMaterial( DtlsSSLContext_t * pSslContext,
         /* Empty else marker. */
     }
 
-    pKeys = ( TlsKeys * ) &pSslContext->tlsKeys;
+    if( retStatus == 0 )
+    {
+        pKeys = ( TlsKeys * ) &pSslContext->tlsKeys;
 
-    // https://mbed-tls.readthedocs.io/en/latest/kb/how-to/tls_prf/
-    retStatus = mbedtls_ssl_tls_prf( pKeys->tlsProfile,
-                                     pKeys->masterSecret,
-                                     ARRAY_SIZE( pKeys->masterSecret ),
-                                     KEYING_EXTRACTOR_LABEL,
-                                     pKeys->randBytes,
-                                     ARRAY_SIZE( pKeys->randBytes ),
-                                     keyingMaterialBuffer,
-                                     ARRAY_SIZE( keyingMaterialBuffer ) );
-    if( retStatus != 0 )
-    {
-        LogError( ( "Failed TLS-PRF function for key derivation, funct: %d", pKeys->tlsProfile ) );
-        MBEDTLS_ERROR_DESCRIPTION( retStatus );
-        retStatus = -1;
-    }
-    else
-    {
-        /* Empty else marker. */
+        // https://mbed-tls.readthedocs.io/en/latest/kb/how-to/tls_prf/
+        retStatus = mbedtls_ssl_tls_prf( pKeys->tlsProfile,
+                                         pKeys->masterSecret,
+                                         ARRAY_SIZE( pKeys->masterSecret ),
+                                         KEYING_EXTRACTOR_LABEL,
+                                         pKeys->randBytes,
+                                         ARRAY_SIZE( pKeys->randBytes ),
+                                         keyingMaterialBuffer,
+                                         ARRAY_SIZE( keyingMaterialBuffer ) );
+        if( retStatus != 0 )
+        {
+            LogError( ( "Failed TLS-PRF function for key derivation, funct: %d", pKeys->tlsProfile ) );
+            MBEDTLS_ERROR_DESCRIPTION( retStatus );
+            retStatus = -1;
+        }
+        else
+        {
+            /* Empty else marker. */
+        }
     }
 
     if( retStatus == 0 )

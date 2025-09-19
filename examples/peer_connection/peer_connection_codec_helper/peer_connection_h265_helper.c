@@ -176,11 +176,14 @@ PeerConnectionResult_t PeerConnectionH265Helper_WriteH265Frame( PeerConnectionSe
                     pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-
-    if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_VIDEO )
+    else if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_VIDEO )
     {
         LogError( ( "Invalid track kind." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )

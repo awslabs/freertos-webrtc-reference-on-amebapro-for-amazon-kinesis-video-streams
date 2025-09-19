@@ -1182,6 +1182,7 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
 
     if( pCtx == NULL )
     {
+        LogWarn( ( "Invalid input parameter, pCtx is NULL" ) );
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
     }
 
@@ -1189,13 +1190,14 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
     {
         /* Disconnect the Web-Socket Server. */
         retWebsocket = Websocket_Disconnect( &( pCtx->websocketContext ) );
-    }
-    else
-    {
-        LogWarn( ( " Web-Socket Disconnect Unsuccessfull. " ) );
+        if( retWebsocket != WEBSOCKET_RESULT_OK )
+        {
+            LogWarn( ( "Web-Socket Disconnect Unsuccessfull with reason %d.", retWebsocket ) );
+            ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+        }
     }
 
-    if( retWebsocket == WEBSOCKET_RESULT_OK )
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         LogDebug( ( "Disconnected Websocket Server." ) );
 

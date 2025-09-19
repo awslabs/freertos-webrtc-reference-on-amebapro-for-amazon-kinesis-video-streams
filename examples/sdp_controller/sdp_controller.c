@@ -2377,101 +2377,104 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
         }
     }
 
-    while( sdpResult == SDP_RESULT_OK )
+    if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
+        while( sdpResult == SDP_RESULT_OK )
+        {
+            sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
 
-        if( sdpResult != SDP_RESULT_OK )
-        {
-            break;
-        }
-        else if( type == SDP_TYPE_MEDIA )
-        {
-            pOffer->mediaDescriptions[ pOffer->mediaCount ].pMediaName = pValue;
-            pOffer->mediaDescriptions[ pOffer->mediaCount ].mediaNameLength = valueLength;
-            pOffer->mediaCount++;
-        }
-        else if( pOffer->mediaCount != 0 )
-        {
-            if( type == SDP_TYPE_ATTRIBUTE )
+            if( sdpResult != SDP_RESULT_OK )
             {
-                ret = parseMediaAttributes( pOffer, pValue, valueLength );
-                if( ret != SDP_CONTROLLER_RESULT_OK )
+                break;
+            }
+            else if( type == SDP_TYPE_MEDIA )
+            {
+                pOffer->mediaDescriptions[ pOffer->mediaCount ].pMediaName = pValue;
+                pOffer->mediaDescriptions[ pOffer->mediaCount ].mediaNameLength = valueLength;
+                pOffer->mediaCount++;
+            }
+            else if( pOffer->mediaCount != 0 )
+            {
+                if( type == SDP_TYPE_ATTRIBUTE )
                 {
-                    LogError( ( "parseMediaAttributes fail, result %d", ret ) );
-                    break;
+                    ret = parseMediaAttributes( pOffer, pValue, valueLength );
+                    if( ret != SDP_CONTROLLER_RESULT_OK )
+                    {
+                        LogError( ( "parseMediaAttributes fail, result %d", ret ) );
+                        break;
+                    }
                 }
-            }
-            else if( type == SDP_TYPE_SESSION_INFO )
-            {
-                // Media Title
-                pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].pMediaTitle = pValue;
-                pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].mediaTitleLength = valueLength;
-            }
-            else
-            {
-                /* Do nothing. */
-            }
-        }
-        else
-        {
-            /* No media description before, these attributes belongs to session. */
-            if( type == SDP_TYPE_SESSION_NAME )
-            {
-                // SDP Session Name
-                pOffer->pSessionName = pValue;
-                pOffer->sessionNameLength = valueLength;
-            }
-            else if( type == SDP_TYPE_SESSION_INFO )
-            {
-                // SDP Session Information
-                pOffer->pSessionInformation = pValue;
-                pOffer->sessionInformationLength = valueLength;
-            }
-            else if( type == SDP_TYPE_URI )
-            {
-                // SDP URI
-                pOffer->pUri = pValue;
-                pOffer->uriLength = valueLength;
-            }
-            else if( type == SDP_TYPE_EMAIL )
-            {
-                // SDP Email Address
-                pOffer->pEmailAddress = pValue;
-                pOffer->emailAddressLength = valueLength;
-            }
-            else if( type == SDP_TYPE_PHONE )
-            {
-                // SDP Phone number
-                pOffer->pPhoneNumber = pValue;
-                pOffer->phoneNumberLength = valueLength;
-            }
-            else if( type == SDP_TYPE_VERSION )
-            {
-                // Version
-                stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pOffer->version );
-                if( stringResult != STRING_UTILS_RESULT_OK )
+                else if( type == SDP_TYPE_SESSION_INFO )
                 {
-                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
-                                stringResult,
-                                ( int ) valueLength, pValue,
-                                pOffer->version ) );
-                    ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
-                    break;
+                    // Media Title
+                    pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].pMediaTitle = pValue;
+                    pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].mediaTitleLength = valueLength;
                 }
-            }
-            else if( type == SDP_TYPE_ATTRIBUTE )
-            {
-                ret = parseSessionAttributes( pOffer, pValue, valueLength );
-                if( ret != SDP_CONTROLLER_RESULT_OK )
+                else
                 {
-                    LogError( ( "parseSessionAttributes fail, result %d", ret ) );
-                    break;
+                    /* Do nothing. */
                 }
             }
             else
             {
-                /* Do nothing. */
+                /* No media description before, these attributes belongs to session. */
+                if( type == SDP_TYPE_SESSION_NAME )
+                {
+                    // SDP Session Name
+                    pOffer->pSessionName = pValue;
+                    pOffer->sessionNameLength = valueLength;
+                }
+                else if( type == SDP_TYPE_SESSION_INFO )
+                {
+                    // SDP Session Information
+                    pOffer->pSessionInformation = pValue;
+                    pOffer->sessionInformationLength = valueLength;
+                }
+                else if( type == SDP_TYPE_URI )
+                {
+                    // SDP URI
+                    pOffer->pUri = pValue;
+                    pOffer->uriLength = valueLength;
+                }
+                else if( type == SDP_TYPE_EMAIL )
+                {
+                    // SDP Email Address
+                    pOffer->pEmailAddress = pValue;
+                    pOffer->emailAddressLength = valueLength;
+                }
+                else if( type == SDP_TYPE_PHONE )
+                {
+                    // SDP Phone number
+                    pOffer->pPhoneNumber = pValue;
+                    pOffer->phoneNumberLength = valueLength;
+                }
+                else if( type == SDP_TYPE_VERSION )
+                {
+                    // Version
+                    stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pOffer->version );
+                    if( stringResult != STRING_UTILS_RESULT_OK )
+                    {
+                        LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                                    stringResult,
+                                    ( int ) valueLength, pValue,
+                                    pOffer->version ) );
+                        ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
+                        break;
+                    }
+                }
+                else if( type == SDP_TYPE_ATTRIBUTE )
+                {
+                    ret = parseSessionAttributes( pOffer, pValue, valueLength );
+                    if( ret != SDP_CONTROLLER_RESULT_OK )
+                    {
+                        LogError( ( "parseSessionAttributes fail, result %d", ret ) );
+                        break;
+                    }
+                }
+                else
+                {
+                    /* Do nothing. */
+                }
             }
         }
     }
@@ -2639,8 +2642,6 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
     else if( ( populateConfiguration.pCname == NULL ) ||
              ( populateConfiguration.pLocalFingerprint == NULL ) ||
              ( populateConfiguration.pPassword == NULL ) ||
-             ( trackKind < TRANSCEIVER_TRACK_KIND_AUDIO ) ||
-             ( trackKind > TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) ||
              ( ( trackKind != TRANSCEIVER_TRACK_KIND_DATA_CHANNEL ) && ( populateConfiguration.pTransceiver == NULL ) ) ||
              ( populateConfiguration.pUserName == NULL ) )
     {
@@ -2698,6 +2699,14 @@ SdpControllerResult_t SdpController_PopulateSingleMedia( SdpControllerMediaDescr
             case TRANSCEIVER_TRACK_KIND_DATA_CHANNEL:
             {
                 written = snprintf( pCurBuffer, remainSize, "%s", SDP_CONTROLLER_DATA_CHANNEL_ATTRIBUTE_NAME_MEDIA_NAME );
+                break;
+            }
+            default:
+            {
+                LogError( ( "Unknown track kind: %d",
+                            trackKind ) );
+                ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
+                written = -1;
                 break;
             }
         }

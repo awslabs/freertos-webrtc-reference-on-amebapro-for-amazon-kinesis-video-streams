@@ -58,16 +58,6 @@ static int32_t InitTransceiver( void * pMediaCtx,
         LogError( ( "Invalid input, pMediaCtx: %p, pTranceiver: %p", pMediaCtx, pTranceiver ) );
         ret = -1;
     }
-    else if( ( trackKind != TRANSCEIVER_TRACK_KIND_VIDEO ) &&
-             ( trackKind != TRANSCEIVER_TRACK_KIND_AUDIO ) )
-    {
-        LogError( ( "Invalid track kind: %d", trackKind ) );
-        ret = -2;
-    }
-    else
-    {
-        /* Empty else marker. */
-    }
 
     if( ret == 0 )
     {
@@ -80,6 +70,10 @@ static int32_t InitTransceiver( void * pMediaCtx,
             case TRANSCEIVER_TRACK_KIND_AUDIO:
                 ret = AppMediaSource_InitAudioTransceiver( pMediaSourceContext,
                                                            pTranceiver );
+                break;
+            default:
+                LogError( ( "Unknown track kind: %d", trackKind ) );
+                ret = -2;
                 break;
         }
     }
