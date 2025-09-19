@@ -244,7 +244,8 @@ PeerConnectionResult_t PeerConnectionH265Helper_WriteH265Frame( PeerConnectionSe
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                 *pRtpSeq,
                                                                 &pRollingBufferPacket );
-        if( ret != PEER_CONNECTION_RESULT_OK )
+        if( ( ret != PEER_CONNECTION_RESULT_OK ) ||
+            ( pRollingBufferPacket == NULL ) )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
             break;

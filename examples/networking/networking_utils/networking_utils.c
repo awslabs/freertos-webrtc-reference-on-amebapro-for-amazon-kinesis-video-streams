@@ -298,12 +298,15 @@ void NetworkingUtils_GetHeaderStartLocFromHttpRequest( HTTPRequestHeaders_t * px
                                                        char ** pcStartHeaderLoc,
                                                        size_t * pxHeadersDataLen )
 {
-    size_t xHeaderLen = pxRequestHeaders->headersLen;
-    char * pcHeaders = ( char * ) pxRequestHeaders->pBuffer;
+    size_t xHeaderLen = 0U;
+    char * pcHeaders = NULL;
     bool xNewLineFound = false;
 
     if( ( pxRequestHeaders != NULL ) && ( pcStartHeaderLoc != NULL ) && ( pxHeadersDataLen != NULL ) )
     {
+        xHeaderLen = pxRequestHeaders->headersLen;
+        pcHeaders = ( char * ) pxRequestHeaders->pBuffer;
+
         while( xHeaderLen >= 2 )
         {
             /* The request line ends in \r\n. Look for \r\n. */

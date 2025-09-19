@@ -2270,8 +2270,8 @@ static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescript
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     int written;
-    size_t remainSize = *pBufferLength;
-    char * pCurBuffer = *ppBuffer;
+    size_t remainSize = 0U;
+    char * pCurBuffer = NULL;
 
     if( ( ppBuffer == NULL ) ||
         ( *ppBuffer == NULL ) ||
@@ -2283,6 +2283,11 @@ static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescript
                     pBufferLength,
                     pLocalSdpDescription ) );
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        remainSize = *pBufferLength;
+        pCurBuffer = *ppBuffer;
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
