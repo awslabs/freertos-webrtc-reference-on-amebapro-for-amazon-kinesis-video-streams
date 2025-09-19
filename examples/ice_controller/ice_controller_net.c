@@ -624,6 +624,19 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
             ( pLocalIceEndpoint->transportAddress.family == pCtx->iceServers[ i ].iceEndpoint.transportAddress.family ) )
         {
             ret = CreateSocketContext( pCtx, pLocalIceEndpoint->transportAddress.family, pLocalIceEndpoint, NULL, ICE_SOCKET_PROTOCOL_UDP, &pSocketContext );
+            if( ( ret != ICE_CONTROLLER_RESULT_OK ) ||
+                ( pSocketContext == NULL ) )
+            {
+                LogError( ( "Fail to create socket context for srflx candidate." ) );
+                continue;
+            }
+        }
+        else
+        {
+            LogWarn( ( "STUN server's IP family is not supported: %.*s",
+                       ( int ) pCtx->iceServers[ i ].urlLength,
+                       pCtx->iceServers[ i ].url ) );
+            continue;
         }
 
         if( ret == ICE_CONTROLLER_RESULT_OK )
