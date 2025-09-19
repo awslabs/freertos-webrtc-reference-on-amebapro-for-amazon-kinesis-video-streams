@@ -39,7 +39,7 @@ To compile and run the Coverity target successfully, you must have the following
    cov-configure --config covConfig/coverity.xml --compiler arm-none-eabi-gcc --comptype gcc --template
    cov-build --config covConfig/coverity.xml --emit-complementary-info --dir . make -j $(nproc)
    cov-analyze --dir . --tu-pattern "file('.*/examples/.*')"
-   cov-format-errors --dir . --html-output coverity_report
+   cov-format-errors --dir . --html-output coverity_report --exclude-files "mpu_armv8.h"
    ```
 
 These commands will:
