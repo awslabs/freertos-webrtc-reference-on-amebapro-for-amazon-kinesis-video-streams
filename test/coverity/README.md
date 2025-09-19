@@ -1,5 +1,5 @@
 # Static code analysis for FreeRTOS WebRTC Application
-This directory is made for the purpose of statically analyzing the SDP Library using
+This directory is made for the purpose of statically analyzing the FreeRTOS WebRTC Application Library using
 [Black Duck Coverity](https://www.blackduck.com/static-analysis-tools-sast/coverity.html) static analysis tool.
 This configuration focuses on detecting code defects such as memory leaks, null pointer dereferences,
 buffer overflows, and other code quality issues.
