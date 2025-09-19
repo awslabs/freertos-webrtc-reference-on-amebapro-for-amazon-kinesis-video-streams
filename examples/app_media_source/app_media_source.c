@@ -62,32 +62,36 @@ static void VideoTx_Task( void * pParameter )
     }
 
     /* Handle event. */
-    while( skipProcess == 0 )
+    if( skipProcess == 0 )
     {
-        /* Recevied message from data queue. */
-        frameLength = sizeof( MediaFrame_t );
-        retMessageQueue = MessageQueue_Recv( &pVideoContext->dataQueue,
-                                             &frame,
-                                             &frameLength );
-        if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+        /* Intentional infinite loop to keep addressing media frames from hardware. */
+        while( 1 )
         {
-            /* Received a media frame. */
-            LogVerbose( ( "Video Tx frame(%ld), trackKind: %d, timestamp: %llu, payload: 0x%x 0x%x 0x%x 0x%x", frame.size, frame.trackKind, frame.timestampUs, frame.pData[0], frame.pData[1], frame.pData[2], frame.pData[3] ) );
-
-            if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
+            /* Recevied message from data queue. */
+            frameLength = sizeof( MediaFrame_t );
+            retMessageQueue = MessageQueue_Recv( &pVideoContext->dataQueue,
+                                                 &frame,
+                                                 &frameLength );
+            if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
             {
-                ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
-                                                                              &frame );
-            }
+                /* Received a media frame. */
+                LogVerbose( ( "Video Tx frame(%ld), trackKind: %d, timestamp: %llu, payload: 0x%x 0x%x 0x%x 0x%x", frame.size, frame.trackKind, frame.timestampUs, frame.pData[0], frame.pData[1], frame.pData[2], frame.pData[3] ) );
 
-            if( frame.freeData )
-            {
-                vPortFree( frame.pData );
+                if( pVideoContext->pSourcesContext->onMediaSinkHookFunc )
+                {
+                    ( void ) pVideoContext->pSourcesContext->onMediaSinkHookFunc( pVideoContext->pSourcesContext->pOnMediaSinkHookCustom,
+                                                                                  &frame );
+                }
+
+                if( frame.freeData )
+                {
+                    vPortFree( frame.pData );
+                }
             }
-        }
-        else
-        {
-            LogError( ( " VideoTx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
+            else
+            {
+                LogError( ( " VideoTx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
+            }
         }
     }
 
@@ -112,31 +116,35 @@ static void AudioTx_Task( void * pParameter )
     }
 
     /* Handle event. */
-    while( skipProcess == 0 )
+    if( skipProcess == 0 )
     {
-        /* Recevied message from data queue. */
-        frameLength = sizeof( MediaFrame_t );
-        retMessageQueue = MessageQueue_Recv( &pAudioContext->dataQueue,
-                                             &frame,
-                                             &frameLength );
-        if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+        /* Intentional infinite loop to keep addressing media frames from hardware. */
+        while( 1 )
         {
-            /* Received a media frame. */
-            LogVerbose( ( "Audio Tx frame(%ld), track kind: %d, timestampUs: %llu", frame.size, frame.trackKind, frame.timestampUs ) );
+            /* Recevied message from data queue. */
+            frameLength = sizeof( MediaFrame_t );
+            retMessageQueue = MessageQueue_Recv( &pAudioContext->dataQueue,
+                                                 &frame,
+                                                 &frameLength );
+            if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+            {
+                /* Received a media frame. */
+                LogVerbose( ( "Audio Tx frame(%ld), track kind: %d, timestampUs: %llu", frame.size, frame.trackKind, frame.timestampUs ) );
 
-            if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
-            {
-                ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
-                                                                              &frame );
+                if( pAudioContext->pSourcesContext->onMediaSinkHookFunc )
+                {
+                    ( void ) pAudioContext->pSourcesContext->onMediaSinkHookFunc( pAudioContext->pSourcesContext->pOnMediaSinkHookCustom,
+                                                                                  &frame );
+                }
+                if( frame.freeData )
+                {
+                    vPortFree( frame.pData );
+                }
             }
-            if( frame.freeData )
+            else
             {
-                vPortFree( frame.pData );
+                LogError( ( " AudioTx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
             }
-        }
-        else
-        {
-            LogError( ( " AudioTx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
         }
     }
 
