@@ -52,7 +52,7 @@ BaseType_t UDP_Sockets_CreateAndAssign( Socket_t * pUdpSocket,
 
     if( xRet == UDP_SOCKETS_ERRNO_NONE )
     {
-        *pUdpSocket = pvPortMalloc( sizeof( *pUdpSocket ) );
+        *pUdpSocket = pvPortMalloc( sizeof( struct xSOCKET ) );
         if( *pUdpSocket == NULL )
         {
             LogError( ( "Failed to allow new socket context." ) );
