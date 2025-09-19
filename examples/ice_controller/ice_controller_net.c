@@ -592,7 +592,7 @@ static void AddSrflxCandidate( IceControllerContext_t * pCtx,
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
     uint32_t i;
-    IceControllerSocketContext_t * pSocketContext;
+    IceControllerSocketContext_t * pSocketContext = NULL;
     #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif /* #if LIBRARY_LOG_LEVEL >= LOG_VERBOSE  */
