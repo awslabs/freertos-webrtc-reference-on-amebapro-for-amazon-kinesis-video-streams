@@ -441,8 +441,6 @@ PeerConnectionResult_t PeerConnectionJitterBuffer_Create( PeerConnectionJitterBu
         pJitterBuffer->newestReceivedSequenceNumber = 0xFFFF;
         pJitterBuffer->newestReceivedTimestamp = 0xFFFFFFFF;
         pJitterBuffer->oldestReceivedSequenceNumber = 0U;
-        pJitterBuffer->newestReceivedSequenceNumber = 0xFFFF;
-        pJitterBuffer->newestReceivedTimestamp = 0xFFFFFFFF;
         /* Converting tolerence buffer in seconds into RTP time stamp format. */
         pJitterBuffer->tolerenceRtpTimeStamp = tolerenceBufferSec * ( clockRate );
 

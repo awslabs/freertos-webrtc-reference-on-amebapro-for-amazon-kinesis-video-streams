@@ -357,9 +357,16 @@ static void * CreateModuleHook( void * parent )
 
 static void * NewModuleItemHook( void * p )
 {
+    void * pBuffer = pvPortMalloc( MEDIA_PORT_WEBRTC_AUDIO_FRAME_SIZE * 2 );
+
     ( void ) p;
 
-    return ( void * ) pvPortMalloc( MEDIA_PORT_WEBRTC_AUDIO_FRAME_SIZE * 2 );
+    if( pBuffer == NULL )
+    {
+        LogError( ( "Fail to allocate buffer for module item." ) );
+    }
+
+    return pBuffer;
 }
 
 static void * DeleteModuleItemHook( void * p,
