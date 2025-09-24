@@ -33,6 +33,7 @@
 #include "app_common.h"
 #include "networking_utils.h"
 #include "string_utils.h"
+#include "app_media_source.h"
 #if METRIC_PRINT_ENABLED
 #include "metric.h"
 #endif
@@ -875,33 +876,15 @@ static PeerConnectionResult_t HandleRxVideoFrame( void * pCustomContext,
 static PeerConnectionResult_t HandleRxAudioFrame( void * pCustomContext,
                                                   PeerConnectionFrame_t * pFrame )
 {
-    #ifdef ENABLE_STREAMING_LOOPBACK
-    MediaFrame_t frame;
     AppContext_t * pAppContext = ( AppContext_t * ) pCustomContext;
 
     if( pFrame != NULL )
     {
-        LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
-
-        frame.trackKind = TRANSCEIVER_TRACK_KIND_AUDIO;
-        frame.pData = pFrame->pData;
-        frame.size = pFrame->dataLength;
-        frame.freeData = 0U;
-        frame.timestampUs = pFrame->presentationUs;
-        if( pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc )
-        {
-            ( void ) pAppContext->pAppMediaSourcesContext->onMediaSinkHookFunc( pAppContext->pAppMediaSourcesContext->pOnMediaSinkHookCustom,
-                                                                                &frame );
-        }
+        LogDebug( ( "Received audio frame: Length=%u, Timestamp=%llu",
+                   ( unsigned int ) pFrame->dataLength,
+                   ( unsigned long long ) pFrame->presentationUs ) );
+        AppMediaSource_PlayAudioFrame(pAppContext->pAppMediaSourcesContext, pFrame->pData, pFrame->dataLength);
     }
-
-    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
-    ( void ) pCustomContext;
-    if( pFrame != NULL )
-    {
-        LogDebug( ( "Received audio frame with length: %u", pFrame->dataLength ) );
-    }
-    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return PEER_CONNECTION_RESULT_OK;
 }
