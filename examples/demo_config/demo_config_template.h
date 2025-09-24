@@ -80,6 +80,8 @@
 #if ( AUDIO_G711_MULAW + AUDIO_G711_ALAW + AUDIO_OPUS ) != 1
 #error only one of audio format should be set
 #endif
+/* Enable audio receive flow to deliver received audio frames to output. */
+#define MEDIA_PORT_ENABLE_AUDIO_RECV ( 1 )
 
 /* Video codec setting. */
 #define USE_VIDEO_CODEC_H264 1
