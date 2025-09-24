@@ -185,6 +185,9 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceCandidatePair_t * pOriginalCandidatePair = NULL;
+    OnIceEventCallback_t onIceEventCallbackFunc = NULL;
+    void * pOnIceEventCallbackCustomContext = NULL;
+    int32_t retPeerToPeerConnectionFound = 0;
     #if LIBRARY_LOG_LEVEL >= LOG_INFO
     char ipBuffer[ INET_ADDRSTRLEN ];
     #endif
@@ -231,11 +234,19 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
         /* Update nominated socket context. */
         if( xSemaphoreTake( pCtx->socketMutex, portMAX_DELAY ) == pdTRUE )
         {
-            pOriginalCandidatePair = pCtx->pNominatedSocketContext->pCandidatePair;
+            /* While running as viewer, the other master side might start DTLS handshaking
+             * earlier than ICE_CANDIDATE STUN binding request. */
+            if( pCtx->pNominatedSocketContext != NULL )
+            {
+                pOriginalCandidatePair = pCtx->pNominatedSocketContext->pCandidatePair;
+            }
             pCtx->pNominatedSocketContext = pSocketContext;
             pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
             pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
             pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
+
+            onIceEventCallbackFunc = pCtx->onIceEventCallbackFunc;
+            pOnIceEventCallbackCustomContext = pCtx->pOnIceEventCustomContext;
 
             ( void ) pOriginalCandidatePair;
 
@@ -243,10 +254,32 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
             xSemaphoreGive( pCtx->socketMutex );
 
             LogInfo( ( "Nominated pair is changed from local/remote candidate ID: 0x%04x / 0x%04x to local/remote candidate ID: 0x%04x / 0x%04x",
-                       pOriginalCandidatePair->pLocalCandidate->candidateId,
-                       pOriginalCandidatePair->pRemoteCandidate->candidateId,
+                       pOriginalCandidatePair == NULL? 0:pOriginalCandidatePair->pLocalCandidate->candidateId,
+                       pOriginalCandidatePair == NULL? 0:pOriginalCandidatePair->pRemoteCandidate->candidateId,
                        pCandidatePair->pLocalCandidate->candidateId,
                        pCandidatePair->pRemoteCandidate->candidateId ) );
+
+            if( pOriginalCandidatePair == NULL )
+            {
+                IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
+                IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
+
+                /* Found nominated pair, execute DTLS handshake and release all other resources. */
+                if( onIceEventCallbackFunc )
+                {
+                    retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
+                                                                           ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
+                                                                           NULL );
+                    if( retPeerToPeerConnectionFound != 0 )
+                    {
+                        LogError( ( "Fail to handle peer to peer connection found event, ret: %ld", retPeerToPeerConnectionFound ) );
+                    }
+                }
+                else
+                {
+                    LogWarn( ( "No callback function to handle P2P connection found event." ) );
+                }
+            }
         }
         else
         {
@@ -261,15 +294,12 @@ static IceControllerResult_t UpdateNominatedSocketContext( IceControllerContext_
 static void HandleRxPacket( IceControllerContext_t * pCtx,
                             IceControllerSocketContext_t * pSocketContext,
                             OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc,
-                            void * pOnRecvNonStunPacketCallbackContext,
-                            OnIceEventCallback_t onIceEventCallbackFunc,
-                            void * pOnIceEventCallbackCustomContext )
+                            void * pOnRecvNonStunPacketCallbackContext )
 {
     uint8_t skipProcess = 0;
     int32_t readBytes = 0;
     IceEndpoint_t remoteIceEndpoint;
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
-    int32_t retPeerToPeerConnectionFound;
     IceResult_t iceResult;
     IceCandidatePair_t * pCandidatePair = NULL;
     uint8_t * pTurnPayload = NULL;
@@ -412,28 +442,12 @@ static void HandleRxPacket( IceControllerContext_t * pCtx,
                                                          &remoteIceEndpoint,
                                                          pCandidatePair );
                 if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) &&
-                    ( pCtx->pNominatedSocketContext->state != ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED ) )
+                    ( pCtx->pNominatedSocketContext == NULL ) )
                 {
-                    /* Set state to selected and release other un-selected sockets. */
-                    IceController_UpdateState( pCtx, ICE_CONTROLLER_STATE_READY );
-                    IceController_UpdateTimerInterval( pCtx, ICE_CONTROLLER_PERIODIC_TIMER_INTERVAL_MS );
-                    pCtx->pNominatedSocketContext->state = ICE_CONTROLLER_SOCKET_CONTEXT_STATE_SELECTED;
-
-                    /* Found nominated pair, execute DTLS handshake and release all other resources. */
-                    if( onIceEventCallbackFunc )
-                    {
-                        retPeerToPeerConnectionFound = onIceEventCallbackFunc( pOnIceEventCallbackCustomContext,
-                                                                               ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND,
-                                                                               NULL );
-                        if( retPeerToPeerConnectionFound != 0 )
-                        {
-                            LogError( ( "Fail to handle peer to peer connection found event, ret: %ld", retPeerToPeerConnectionFound ) );
-                        }
-                    }
-                    else
-                    {
-                        LogWarn( ( "No callback function to handle P2P connection found event." ) );
-                    }
+                    UpdateNominatedSocketContext( pCtx,
+                                                  pSocketContext,
+                                                  pCandidatePair,
+                                                  &remoteIceEndpoint );
                 }
                 else if( ( ret == ICE_CONTROLLER_RESULT_FOUND_CONNECTION ) || ( ret == ICE_CONTROLLER_RESULT_OK ) )
                 {
@@ -486,8 +500,6 @@ static void pollingSockets( IceControllerContext_t * pCtx )
     size_t fdsCount;
     OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
     void * pOnRecvNonStunPacketCallbackContext = NULL;
-    OnIceEventCallback_t onIceEventCallbackFunc;
-    void * pOnIceEventCallbackCustomContext = NULL;
     IceControllerSocketContext_t * pSocketContext;
 
     FD_ZERO( &rfds );
@@ -501,8 +513,6 @@ static void pollingSockets( IceControllerContext_t * pCtx )
         fdsCount = pCtx->socketsContextsCount;
         onRecvNonStunPacketFunc = pCtx->socketListenerContext.onRecvNonStunPacketFunc;
         pOnRecvNonStunPacketCallbackContext = pCtx->socketListenerContext.pOnRecvNonStunPacketCallbackContext;
-        onIceEventCallbackFunc = pCtx->onIceEventCallbackFunc;
-        pOnIceEventCallbackCustomContext = pCtx->pOnIceEventCustomContext;
 
         /* We have finished accessing the shared resource.  Release the mutex. */
         xSemaphoreGive( pCtx->socketMutex );
@@ -564,9 +574,7 @@ static void pollingSockets( IceControllerContext_t * pCtx )
                     HandleRxPacket( pCtx,
                                     pSocketContext,
                                     onRecvNonStunPacketFunc,
-                                    pOnRecvNonStunPacketCallbackContext,
-                                    onIceEventCallbackFunc,
-                                    pOnIceEventCallbackCustomContext );
+                                    pOnRecvNonStunPacketCallbackContext );
                 }
             }
         }

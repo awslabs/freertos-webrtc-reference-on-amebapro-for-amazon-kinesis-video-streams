@@ -18,6 +18,12 @@
 #define APP_COMMON_H
 
 #include <stdio.h>
+
+/* FreeRTOS includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "event_groups.h"
+
 #include "sdp_controller.h"
 #include "signaling_controller.h"
 #include "peer_connection.h"
@@ -54,7 +60,12 @@ typedef struct AppSession
 typedef struct AppContext
 {
     /* Signaling controller. */
+    EventGroupHandle_t signalingConnectionBarrier;
     SignalingControllerContext_t signalingControllerContext;
+    TaskHandle_t * pSignalingControllerTaskHandler;
+    char signalingControllerClientId[ SIGNALING_CONTROLLER_REMOTE_ID_MAX_LENGTH ];
+    size_t signalingControllerClientIdLength;
+    SignalingRole_t signalingControllerRole;
 
     char sdpConstructedBuffer[ PEER_CONNECTION_SDP_DESCRIPTION_BUFFER_MAX_LENGTH ];
     size_t sdpConstructedBufferLength;
@@ -74,6 +85,10 @@ typedef struct AppContext
 int AppCommon_Init( AppContext_t * pAppContext,
                     InitTransceiverFunc_t initTransceiverFunc,
                     void * pMediaContext );
-int AppCommon_Start( AppContext_t * pAppContext );
+int AppCommon_StartSignalingController( AppContext_t * pAppContext );
+void AppCommon_WaitSignalingControllerStop( AppContext_t * pAppContext );
+AppSession_t * AppCommon_GetPeerConnectionSession( AppContext_t * pAppContext,
+                                                   const char * pRemoteClientId,
+                                                   size_t remoteClientIdLength );
 
 #endif /* APP_COMMON_H */

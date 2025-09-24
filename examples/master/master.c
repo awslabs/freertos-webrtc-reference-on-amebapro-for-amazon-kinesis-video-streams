@@ -189,8 +189,23 @@ static void Master_Task( void * pParameter )
 
     if( ret == 0 )
     {
+        /* Configure signaling controller with client ID and role type. */
+        memcpy( &( appContext.signalingControllerClientId[ 0 ] ), SIGNALING_CONTROLLER_MASTER_CLIENT_ID, SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH );
+        appContext.signalingControllerClientId[ SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH ] = '\0';
+        appContext.signalingControllerClientIdLength = SIGNALING_CONTROLLER_MASTER_CLIENT_ID_LENGTH;
+        appContext.signalingControllerRole = SIGNALING_ROLE_MASTER;
+    }
+
+    if( ret == 0 )
+    {
         /* Launch application with current thread serving as Signaling Controller. */
-        ret = AppCommon_Start( &appContext );
+        ret = AppCommon_StartSignalingController( &appContext );
+    }
+
+    if( ret == 0 )
+    {
+        /* Launch application with current thread serving as Signaling Controller. */
+        AppCommon_WaitSignalingControllerStop( &appContext );
     }
 
     for( ;; )
@@ -214,7 +229,7 @@ void app_example( void )
     {
         if( xTaskCreate( Master_Task,
                          ( ( const char * ) "MasterTask" ),
-                         20480,
+                         4096,
                          NULL,
                          tskIDLE_PRIORITY + 4,
                          NULL ) != pdPASS )

@@ -1433,16 +1433,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
 }
 
 IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
-                                           const char * pLocalUserName,
-                                           size_t localUserNameLength,
-                                           const char * pLocalPassword,
-                                           size_t localPasswordLength,
-                                           const char * pRemoteUserName,
-                                           size_t remoteUserNameLength,
-                                           const char * pRemotePassword,
-                                           size_t remotePasswordLength,
-                                           const char * pCombinedName,
-                                           size_t combinedNameLength )
+                                           IceControllerStartConfig_t * pStartConfig )
 {
     IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
     IceResult_t iceResult;
@@ -1451,12 +1442,13 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     uint64_t currentTimeMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000;
 
     if( ( pCtx == NULL ) ||
-        ( pLocalUserName == NULL ) || ( pLocalPassword == NULL ) ||
-        ( pRemoteUserName == NULL ) || ( pRemotePassword == NULL ) ||
-        ( pCombinedName == NULL ) )
+        ( pStartConfig == NULL ) ||
+        ( pStartConfig->pLocalUserName == NULL ) || ( pStartConfig->pLocalPassword == NULL ) ||
+        ( pStartConfig->pRemoteUserName == NULL ) || ( pStartConfig->pRemotePassword == NULL ) ||
+        ( pStartConfig->pCombinedName == NULL ) )
     {
         LogError( ( "Invalid input, pCtx: %p, pLocalUserName: %p, pLocalPassword: %p, pRemoteUserName: %p, pRemotePassword: %p, pCombinedName: %p",
-                    pCtx, pLocalUserName, pLocalPassword, pRemoteUserName, pRemotePassword, pCombinedName ) );
+                    pCtx, pStartConfig->pLocalUserName, pStartConfig->pLocalPassword, pStartConfig->pRemoteUserName, pStartConfig->pRemotePassword, pStartConfig->pCombinedName ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
@@ -1471,16 +1463,16 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         memset( &iceInitInfo,
                 0,
                 sizeof( IceInitInfo_t ) );
-        iceInitInfo.creds.pLocalUsername = ( const uint8_t * ) pLocalUserName;
-        iceInitInfo.creds.localUsernameLength = localUserNameLength;
-        iceInitInfo.creds.pLocalPassword = ( const uint8_t * ) pLocalPassword;
-        iceInitInfo.creds.localPasswordLength = localPasswordLength;
-        iceInitInfo.creds.pRemoteUsername = ( const uint8_t * ) pRemoteUserName;
-        iceInitInfo.creds.remoteUsernameLength = remoteUserNameLength;
-        iceInitInfo.creds.pRemotePassword = ( const uint8_t * ) pRemotePassword;
-        iceInitInfo.creds.remotePasswordLength = remotePasswordLength;
-        iceInitInfo.creds.pCombinedUsername = ( const uint8_t * ) pCombinedName;
-        iceInitInfo.creds.combinedUsernameLength = combinedNameLength;
+        iceInitInfo.creds.pLocalUsername = ( const uint8_t * ) pStartConfig->pLocalUserName;
+        iceInitInfo.creds.localUsernameLength = pStartConfig->localUserNameLength;
+        iceInitInfo.creds.pLocalPassword = ( const uint8_t * ) pStartConfig->pLocalPassword;
+        iceInitInfo.creds.localPasswordLength = pStartConfig->localPasswordLength;
+        iceInitInfo.creds.pRemoteUsername = ( const uint8_t * ) pStartConfig->pRemoteUserName;
+        iceInitInfo.creds.remoteUsernameLength = pStartConfig->remoteUserNameLength;
+        iceInitInfo.creds.pRemotePassword = ( const uint8_t * ) pStartConfig->pRemotePassword;
+        iceInitInfo.creds.remotePasswordLength = pStartConfig->remotePasswordLength;
+        iceInitInfo.creds.pCombinedUsername = ( const uint8_t * ) pStartConfig->pCombinedName;
+        iceInitInfo.creds.combinedUsernameLength = pStartConfig->combinedNameLength;
         iceInitInfo.pLocalCandidatesArray = pCtx->localCandidatesBuffer;
         iceInitInfo.localCandidatesArrayLength = ICE_CONTROLLER_MAX_LOCAL_CANDIDATE_COUNT;
         iceInitInfo.pRemoteCandidatesArray = pCtx->remoteCandidatesBuffer;
@@ -1493,7 +1485,7 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
         iceInitInfo.cryptoFunctions.crc32Fxn = IceController_CalculateCrc32;
         iceInitInfo.cryptoFunctions.hmacFxn = IceController_MbedtlsHmac;
         iceInitInfo.cryptoFunctions.md5Fxn = IceController_MbedtlsMd5;
-        iceInitInfo.isControlling = 0;
+        iceInitInfo.isControlling = pStartConfig->isControlling;
         iceInitInfo.pStunBindingRequestTransactionIdStore = &pCtx->transactionIdStore;
 
         if( xSemaphoreTake( pCtx->iceMutex, portMAX_DELAY ) == pdTRUE )
