@@ -140,7 +140,6 @@ static PeerConnectionResult_t ParseFramesInJitterBuffer( PeerConnectionJitterBuf
 
                     firstTimestampIndex = i;
                     popingPacketStartIndex = -1;
-                    popingPacketEndIndex = -1;
                     isFrameDataContinuous = 1;
                     poppingTimestamp = currentTimestamp;
                 }
@@ -189,7 +188,7 @@ static PeerConnectionResult_t ShouldAcceptPacket( PeerConnectionJitterBuffer_t *
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
     uint16_t earliestTolerenceRtpSeq = 0U, lastestTolerenceRtpSeq = 0U;
-    uint32_t rtpSeqOffset = pJitterBuffer->capacity / 2;
+    uint32_t rtpSeqOffset = 0U;
 
     if( ( pJitterBuffer == NULL ) || ( pPacket == NULL ) )
     {
@@ -199,6 +198,7 @@ static PeerConnectionResult_t ShouldAcceptPacket( PeerConnectionJitterBuffer_t *
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        rtpSeqOffset = pJitterBuffer->capacity / 2;
         earliestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber - rtpSeqOffset ) & 0xFFFF );
         lastestTolerenceRtpSeq = ( uint16_t )( ( pJitterBuffer->newestReceivedSequenceNumber + rtpSeqOffset ) & 0xFFFF );
 

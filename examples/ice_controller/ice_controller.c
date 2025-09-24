@@ -351,7 +351,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 
             if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
             {
-                result = IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
+                ( void ) IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
             }
             else if( pSocketContext->pLocalCandidate != NULL )
             {

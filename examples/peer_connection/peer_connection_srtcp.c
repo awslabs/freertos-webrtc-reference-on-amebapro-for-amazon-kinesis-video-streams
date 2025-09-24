@@ -149,6 +149,7 @@ static PeerConnectionResult_t ResendSrtpPacket( PeerConnectionSession_t * pSessi
         if( ( ret != PEER_CONNECTION_RESULT_OK ) || ( pRollingBufferPacket == NULL ) )
         {
             LogWarn( ( "Fail to find target buffer, seq: %u", rtpSeq ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_RTP_PACKET_NOT_FOUND;
         }
         else
         {
