@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "demo_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "app_media_source.h"
@@ -38,9 +39,11 @@
 #define DEFAULT_TRANSCEIVER_VIDEO_TRACK_ID "myVideoTrack"
 #define DEFAULT_TRANSCEIVER_AUDIO_TRACK_ID "myAudioTrack"
 
-#define DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME "/TxVideoMq"
-#define DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME "/TxAudioMq"
-#define DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM ( 10 )
+#define DEMO_TRANSCEIVER_VIDEO_TX_DATA_QUEUE_NAME "/TxVideoMq"
+#define DEMO_TRANSCEIVER_AUDIO_TX_DATA_QUEUE_NAME "/TxAudioMq"
+#define DEMO_TRANSCEIVER_AUDIO_RX_DATA_QUEUE_NAME "/RxAudioMq"
+#define DEMO_TRANSCEIVER_MAX_TX_QUEUE_MSG_NUM ( 10 )
+#define DEMO_TRANSCEIVER_MAX_RX_QUEUE_MSG_NUM ( 10 )
 
 static void VideoTx_Task( void * pParameter );
 static void AudioTx_Task( void * pParameter );
@@ -66,7 +69,7 @@ static void VideoTx_Task( void * pParameter )
     {
         /* Recevied message from data queue. */
         frameLength = sizeof( MediaFrame_t );
-        retMessageQueue = MessageQueue_Recv( &pVideoContext->dataQueue,
+        retMessageQueue = MessageQueue_Recv( &pVideoContext->dataTxQueue,
                                              &frame,
                                              &frameLength );
         if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
@@ -116,7 +119,7 @@ static void AudioTx_Task( void * pParameter )
     {
         /* Recevied message from data queue. */
         frameLength = sizeof( MediaFrame_t );
-        retMessageQueue = MessageQueue_Recv( &pAudioContext->dataQueue,
+        retMessageQueue = MessageQueue_Recv( &pAudioContext->dataTxQueue,
                                              &frame,
                                              &frameLength );
         if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
@@ -145,6 +148,54 @@ static void AudioTx_Task( void * pParameter )
         vTaskDelay( pdMS_TO_TICKS( 200 ) );
     }
 }
+
+#if MEDIA_PORT_ENABLE_AUDIO_RECV
+    static void AudioRx_Task( void * pParameter )
+    {
+        AppMediaSourceContext_t * pAudioContext = ( AppMediaSourceContext_t * )pParameter;
+        MessageQueueResult_t retMessageQueue;
+        uint8_t skipProcess = 0;
+        MediaFrame_t frame;
+        size_t frameLength;
+
+        if( pAudioContext == NULL )
+        {
+            LogError( ( "Invalid input, pAudioContext: %p", pAudioContext ) );
+            skipProcess = 1;
+        }
+
+        /* Handle event. */
+        while( skipProcess == 0 )
+        {
+            /* Recevied message from data queue. */
+            frameLength = sizeof( MediaFrame_t );
+            retMessageQueue = MessageQueue_Recv( &pAudioContext->dataRxQueue,
+                                                &frame,
+                                                &frameLength );
+            if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+            {
+                /* Received a media frame. */
+                LogVerbose( ( "Audio Rx frame(%ld), timestampUs: %llu", frame.size, frame.timestampUs ) );
+
+                AppMediaSourcePort_PlayAudioFrame( &frame );
+
+                if( frame.freeData )
+                {
+                    vPortFree( frame.pData );
+                }
+            }
+            else
+            {
+                LogError( ( " AudioRx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
+            }
+        }
+
+        for( ;; )
+        {
+            vTaskDelay( pdMS_TO_TICKS( 200 ) );
+        }
+    }
+#endif /* #if MEDIA_PORT_ENABLE_AUDIO_RECV */
 
 static int32_t OnPcEventRemotePeerReady( AppMediaSourceContext_t * pMediaSource )
 {
@@ -277,10 +328,10 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
 
     if( ret == 0 )
     {
-        retMessageQueue = MessageQueue_Create( &pVideoSource->dataQueue,
-                                               DEMO_TRANSCEIVER_VIDEO_DATA_QUEUE_NAME,
+        retMessageQueue = MessageQueue_Create( &pVideoSource->dataTxQueue,
+                                               DEMO_TRANSCEIVER_VIDEO_TX_DATA_QUEUE_NAME,
                                                sizeof( MediaFrame_t ),
-                                               DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
+                                               DEMO_TRANSCEIVER_MAX_TX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open video transceiver data queue." ) );
@@ -298,7 +349,7 @@ static int32_t InitializeVideoSource( AppMediaSourceContext_t * pVideoSource )
     {
         /* Create task for video Tx. */
         if( xTaskCreate( VideoTx_Task,
-                         ( ( const char * )"VideoTask" ),
+                         ( ( const char * )"VideoTxTask" ),
                          2048,
                          pVideoSource,
                          tskIDLE_PRIORITY + 2,
@@ -325,10 +376,10 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
 
     if( ret == 0 )
     {
-        retMessageQueue = MessageQueue_Create( &pAudioSource->dataQueue,
-                                               DEMO_TRANSCEIVER_AUDIO_DATA_QUEUE_NAME,
+        retMessageQueue = MessageQueue_Create( &pAudioSource->dataTxQueue,
+                                               DEMO_TRANSCEIVER_AUDIO_TX_DATA_QUEUE_NAME,
                                                sizeof( MediaFrame_t ),
-                                               DEMO_TRANSCEIVER_MAX_QUEUE_MSG_NUM );
+                                               DEMO_TRANSCEIVER_MAX_TX_QUEUE_MSG_NUM );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
         {
             LogError( ( "Fail to open audio transceiver data queue." ) );
@@ -346,16 +397,46 @@ static int32_t InitializeAudioSource( AppMediaSourceContext_t * pAudioSource )
     {
         /* Create task for audio Tx. */
         if( xTaskCreate( AudioTx_Task,
-                         ( ( const char * )"AudioTask" ),
+                         ( ( const char * )"AudioTxTask" ),
                          2048,
                          pAudioSource,
                          tskIDLE_PRIORITY + 1,
                          NULL ) != pdPASS )
         {
-            LogError( ( "xTaskCreate(AudioTask) failed" ) );
+            LogError( ( "xTaskCreate(AudioTxTask) failed" ) );
             ret = -1;
         }
     }
+
+    #if MEDIA_PORT_ENABLE_AUDIO_RECV
+    if( ret == 0 )
+    {
+        retMessageQueue = MessageQueue_Create( &pAudioSource->dataRxQueue,
+                                               DEMO_TRANSCEIVER_AUDIO_RX_DATA_QUEUE_NAME,
+                                               sizeof( MediaFrame_t ),
+                                               DEMO_TRANSCEIVER_MAX_RX_QUEUE_MSG_NUM );
+        if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+        {
+            LogError( ( "Fail to open audio transceiver data queue." ) );
+            ret = -1;
+        }
+    }
+
+    if( ret == 0 )
+    {
+        /* Create task for audio Rx. */
+        if( xTaskCreate( AudioRx_Task,
+                         ( ( const char * )"AudioRxTask" ),
+                         2048,
+                         pAudioSource,
+                         tskIDLE_PRIORITY + 1,
+                         NULL ) != pdPASS )
+        {
+            LogError( ( "xTaskCreate(AudioRxTask) failed" ) );
+            ret = -1;
+        }
+    }
+    #endif /* MEDIA_PORT_ENABLE_AUDIO_RECV */
 
     return ret;
 }
@@ -377,12 +458,12 @@ static int32_t OnFrameReadyToSend( void * pCtx,
 
     if( ret == 0 )
     {
-        retMessageQueue = MessageQueue_IsFull( &pMediaSource->dataQueue );
+        retMessageQueue = MessageQueue_IsFull( &pMediaSource->dataTxQueue );
         /* Drop oldest packet if full. */
         if( retMessageQueue == MESSAGE_QUEUE_RESULT_MQ_IS_FULL )
         {
             dropFrameSize = sizeof( MediaFrame_t );
-            ( void ) MessageQueue_Recv( &pMediaSource->dataQueue,
+            ( void ) MessageQueue_Recv( &pMediaSource->dataTxQueue,
                                         &dropFrame,
                                         &dropFrameSize );
 
@@ -395,7 +476,7 @@ static int32_t OnFrameReadyToSend( void * pCtx,
 
     if( ret == 0 )
     {
-        retMessageQueue = MessageQueue_Send( &pMediaSource->dataQueue,
+        retMessageQueue = MessageQueue_Send( &pMediaSource->dataTxQueue,
                                              pFrame,
                                              sizeof( MediaFrame_t ) );
         if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
@@ -551,6 +632,115 @@ int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
         pAudioTranceiver->onPcEventCallbackFunc = HandlePcEventCallback;
         pAudioTranceiver->pOnPcEventCustomContext = &pCtx->audioContext;
     }
+
+    return ret;
+}
+
+int32_t AppMediaSource_RecvFrame( AppMediaSourcesContext_t * pCtx,
+                                  MediaFrame_t * pFrame )
+{
+    int32_t ret = 0;
+
+    if( ( pCtx == NULL ) || ( pFrame == NULL ) )
+    {
+        LogError( ( "Invalid input, pCtx: %p, pFrame: %p", pCtx, pFrame ) );
+        ret = -1;
+    }
+
+    #ifdef ENABLE_STREAMING_LOOPBACK
+        if( ret == 0 )
+        {
+            if( pCtx->onMediaSinkHookFunc )
+            {
+                ( void ) pCtx->onMediaSinkHookFunc( pCtx->pOnMediaSinkHookCustom,
+                                                    pFrame );
+            }
+        }
+    #else /* ifdef ENABLE_STREAMING_LOOPBACK */
+        AppMediaSourceContext_t * pMediaSource = NULL;
+        MessageQueueResult_t retMessageQueue;
+        MediaFrame_t frame;
+        size_t frameSize;
+        
+        if( ret == 0 )
+        {
+            #if MEDIA_PORT_ENABLE_AUDIO_RECV
+                if( pFrame->trackKind == TRANSCEIVER_TRACK_KIND_AUDIO )
+                {
+                    pMediaSource = &pCtx->audioContext;
+                }
+                else
+            #endif /* #if MEDIA_PORT_ENABLE_AUDIO_RECV */
+            {
+                LogDebug( ( "Drop received frame, track kind: %d", pFrame->trackKind ) );
+                ret = -1;
+            }
+        }
+
+        if( ret == 0 )
+        {
+            retMessageQueue = MessageQueue_IsFull( &pMediaSource->dataRxQueue );
+
+            /* Drop oldest packet if full. */
+            if( retMessageQueue == MESSAGE_QUEUE_RESULT_MQ_IS_FULL )
+            {
+                frameSize = sizeof( MediaFrame_t );
+                ( void ) MessageQueue_Recv( &pMediaSource->dataRxQueue,
+                                            &frame,
+                                            &frameSize );
+
+                if( frame.freeData )
+                {
+                    vPortFree( frame.pData );
+                }
+            }
+            else if( retMessageQueue != MESSAGE_QUEUE_RESULT_MQ_IS_NOT_FULL )
+            {
+                LogError( ( "Unexpected return value from Rx queue, result: %d", retMessageQueue ) );
+                ret = -1;
+            }
+            else
+            {
+                /* Empty else marker. */
+            }
+        }
+
+        if( ret == 0 )
+        {
+            /* Allocate memory and handle frame in port layer. */
+            frame.pData = pvPortMalloc( pFrame->size );
+            if( frame.pData == NULL )
+            {
+                LogError( ( "Fail to allocate memory for Rx audio frame." ) );
+                ret = -1;
+            }
+            else
+            {
+                memcpy( frame.pData, pFrame->pData, pFrame->size );
+                frame.freeData = 1;
+                frame.size = pFrame->size;
+                frame.timestampUs = pFrame->timestampUs;
+                frame.trackKind = pFrame->trackKind;
+            }
+        }
+
+        if( ret == 0 )
+        {
+            retMessageQueue = MessageQueue_Send( &pMediaSource->dataRxQueue,
+                                                 &frame,
+                                                 sizeof( MediaFrame_t ) );
+            if( retMessageQueue != MESSAGE_QUEUE_RESULT_OK )
+            {
+                LogError( ( "Fail to send frame ready message to queue, error: %d", retMessageQueue ) );
+                ret = -1;
+
+                if( frame.freeData )
+                {
+                    vPortFree( frame.pData );
+                }
+            }
+        }
+    #endif /* ifdef ENABLE_STREAMING_LOOPBACK */
 
     return ret;
 }
