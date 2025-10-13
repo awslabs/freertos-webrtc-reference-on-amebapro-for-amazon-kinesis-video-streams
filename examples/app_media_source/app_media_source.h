@@ -37,7 +37,8 @@ typedef int32_t (* AppMediaSourceOnMediaSinkHook)( void * pCustom,
 
 typedef struct AppMediaSourceContext
 {
-    MessageQueueHandler_t dataQueue;
+    MessageQueueHandler_t dataTxQueue;
+    MessageQueueHandler_t dataRxQueue;
     uint8_t numReadyPeer;
     TransceiverTrackKind_t trackKind;
 
@@ -64,6 +65,8 @@ int32_t AppMediaSource_InitVideoTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pVideoTranceiver );
 int32_t AppMediaSource_InitAudioTransceiver( AppMediaSourcesContext_t * pCtx,
                                              Transceiver_t * pAudioTranceiver );
+int32_t AppMediaSource_RecvFrame( AppMediaSourcesContext_t * pCtx,
+                                  MediaFrame_t * pFrame );
 
 #ifdef __cplusplus
 }
