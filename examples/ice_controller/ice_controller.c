@@ -351,7 +351,7 @@ static void ProcessLocalCandidates( IceControllerContext_t * pCtx )
 
             if( pSocketContext->state == ICE_CONTROLLER_SOCKET_CONTEXT_STATE_CONNECTION_IN_PROGRESS )
             {
-                result = IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
+                ( void ) IceControllerNet_ExecuteTlsHandshake( pCtx, pSocketContext, 1U );
             }
             else if( pSocketContext->pLocalCandidate != NULL )
             {
@@ -1442,14 +1442,23 @@ IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
     uint64_t currentTimeMs = NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000;
 
     if( ( pCtx == NULL ) ||
-        ( pStartConfig == NULL ) ||
-        ( pStartConfig->pLocalUserName == NULL ) || ( pStartConfig->pLocalPassword == NULL ) ||
-        ( pStartConfig->pRemoteUserName == NULL ) || ( pStartConfig->pRemotePassword == NULL ) ||
-        ( pStartConfig->pCombinedName == NULL ) )
+        ( pStartConfig == NULL ) )
     {
-        LogError( ( "Invalid input, pCtx: %p, pLocalUserName: %p, pLocalPassword: %p, pRemoteUserName: %p, pRemotePassword: %p, pCombinedName: %p",
-                    pCtx, pStartConfig->pLocalUserName, pStartConfig->pLocalPassword, pStartConfig->pRemoteUserName, pStartConfig->pRemotePassword, pStartConfig->pCombinedName ) );
+        LogError( ( "Invalid input, pCtx: %p, pStartConfig: %p",
+                    pCtx, pStartConfig ) );
         ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else if( ( pStartConfig->pLocalUserName == NULL ) || ( pStartConfig->pLocalPassword == NULL ) ||
+             ( pStartConfig->pRemoteUserName == NULL ) || ( pStartConfig->pRemotePassword == NULL ) ||
+             ( pStartConfig->pCombinedName == NULL ) )
+    {
+        LogError( ( "Invalid input, pLocalUserName: %p, pLocalPassword: %p, pRemoteUserName: %p, pRemotePassword: %p, pCombinedName: %p",
+                    pStartConfig->pLocalUserName, pStartConfig->pLocalPassword, pStartConfig->pRemoteUserName, pStartConfig->pRemotePassword, pStartConfig->pCombinedName ) );
+        ret = ICE_CONTROLLER_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     /* Initialize ICE component. */

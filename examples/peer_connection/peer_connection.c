@@ -709,12 +709,6 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                     pCustomContext, pEventMsg ) );
         ret = -1;
     }
-    else if( ( event == ICE_CONTROLLER_CB_EVENT_NONE ) || ( event >= ICE_CONTROLLER_CB_EVENT_MAX ) )
-    {
-        LogError( ( "Unknown event: %d",
-                    event ) );
-        ret = -2;
-    }
     else
     {
         LogDebug( ( "Receiving ICE event %d callback", event ) );
@@ -766,7 +760,9 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 ret = OnIceEventPeerConnectionClose( pSession );
                 break;
             default:
-                LogError( ( "Unknown event: %d", event ) );
+                LogError( ( "Unknown event: %d",
+                            event ) );
+                ret = -2;
                 break;
         }
     }
@@ -1858,13 +1854,13 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                 pTargetRemoteSdp->sdpDescription.quickAccess.pIcePwd,
                 pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength );
         pSession->remotePassword[ pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength ] = '\0';
-        snprintf( pSession->combinedName,
-                  ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
-                  "%.*s:%.*s",
-                  ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-                  pSession->remoteUserName,
-                  PEER_CONNECTION_USER_NAME_LENGTH,
-                  peerConnectionContext.localUserName );
+        ( void ) snprintf( pSession->combinedName,
+                           ( PEER_CONNECTION_USER_NAME_LENGTH << 1 ) + 2,
+                           "%.*s:%.*s",
+                           ( int ) pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
+                           pSession->remoteUserName,
+                           PEER_CONNECTION_USER_NAME_LENGTH,
+                           peerConnectionContext.localUserName );
         memcpy( pSession->remoteCertFingerprint,
                 pTargetRemoteSdp->sdpDescription.quickAccess.pFingerprint,
                 pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );
@@ -2509,9 +2505,11 @@ PeerConnectionResult_t PeerConnection_SetPictureLossIndicationCallback( PeerConn
     {
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-
-    pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
-    pSession->pPictureLossIndicationUserContext = pUserContext;
+    else
+    {
+        pSession->onPictureLossIndicationCallback = onPictureLossIndicationCallback;
+        pSession->pPictureLossIndicationUserContext = pUserContext;
+    }
 
     return ret;
 }
@@ -2527,9 +2525,11 @@ PeerConnectionResult_t PeerConnection_SetSenderBandwidthEstimationCallback( Peer
     {
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-
-    pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
-    pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
+    else
+    {
+        pSession->pCtx->onBandwidthEstimationCallback = onBandwidthEstimationCallback;
+        pSession->pCtx->pOnBandwidthEstimationCallbackContext = pUserContext;
+    }
 
     return ret;
 }

@@ -177,11 +177,14 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
                     pSession, pTransceiver, pFrame ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
-
-    if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_VIDEO )
+    else if( pTransceiver->trackKind != TRANSCEIVER_TRACK_KIND_VIDEO )
     {
         LogError( ( "Invalid track kind." ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+    else
+    {
+        /* Empty else marker. */
     }
 
     if( ret == PEER_CONNECTION_RESULT_OK )
@@ -243,7 +246,8 @@ PeerConnectionResult_t PeerConnectionH264Helper_WriteH264Frame( PeerConnectionSe
         ret = PeerConnectionRollingBuffer_GetRtpSequenceBuffer( &pSrtpSender->txRollingBuffer,
                                                                 *pRtpSeq,
                                                                 &pRollingBufferPacket );
-        if( ret != PEER_CONNECTION_RESULT_OK )
+        if( ( ret != PEER_CONNECTION_RESULT_OK ) ||
+            ( pRollingBufferPacket == NULL ) )
         {
             LogWarn( ( "Fail to get RTP buffer for seq: %u", *pRtpSeq ) );
             break;

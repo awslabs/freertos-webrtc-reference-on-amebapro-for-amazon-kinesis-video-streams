@@ -1195,6 +1195,7 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
 
     if( pCtx == NULL )
     {
+        LogWarn( ( "Invalid input parameter, pCtx is NULL" ) );
         ret = SIGNALING_CONTROLLER_RESULT_BAD_PARAM;
     }
 
@@ -1202,13 +1203,14 @@ SignalingControllerResult_t SignalingController_RefreshIceServerConfigs( Signali
     {
         /* Disconnect the Web-Socket Server. */
         retWebsocket = Websocket_Disconnect( &( pCtx->websocketContext ) );
-    }
-    else
-    {
-        LogWarn( ( " Web-Socket Disconnect Unsuccessfull. " ) );
+        if( retWebsocket != WEBSOCKET_RESULT_OK )
+        {
+            LogWarn( ( "Web-Socket Disconnect Unsuccessfull with reason %d.", retWebsocket ) );
+            ret = SIGNALING_CONTROLLER_RESULT_FAIL;
+        }
     }
 
-    if( retWebsocket == WEBSOCKET_RESULT_OK )
+    if( ret == SIGNALING_CONTROLLER_RESULT_OK )
     {
         LogDebug( ( "Disconnected Websocket Server." ) );
 
@@ -1422,7 +1424,6 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                     if( websocketRet != WEBSOCKET_RESULT_OK )
                     {
                         LogError( ( "Websocket_Recv fail, return 0x%x", websocketRet ) );
-                        ret = SIGNALING_CONTROLLER_RESULT_FAIL;
                         break;
                     }
             
@@ -1438,6 +1439,10 @@ SignalingControllerResult_t SignalingController_StartListening( SignalingControl
                             /* Received message, process it. */
                             LogDebug( ( "EventMsg: event: %d, pOnCompleteCallbackContext: %p", eventMsg.event, eventMsg.pOnCompleteCallbackContext ) );
                             ret = HandleEvent( pCtx, &eventMsg );
+                            if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+                            {
+                                LogError( ( "Fail to handle event, return %d", ret ) );
+                            }
                         }
             
                         messageQueueRet = MessageQueue_IsEmpty( &pCtx->sendMessageQueue );

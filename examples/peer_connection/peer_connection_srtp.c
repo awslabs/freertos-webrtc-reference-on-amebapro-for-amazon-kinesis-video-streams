@@ -70,20 +70,20 @@ static PeerConnectionResult_t OnJitterBufferFrameReady( void * pCustomContext,
                     frameBufferLength,
                     startSequence,
                     endSequence ) );
-    }
 
-    if( retFillFrame == PEER_CONNECTION_RESULT_OK )
-    {
-        if( pSrtpReceiver->onFrameReadyCallbackFunc )
+        if( retFillFrame == PEER_CONNECTION_RESULT_OK )
         {
-            memset( &frame, 0, sizeof( PeerConnectionFrame_t ) );
-            frame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
-            frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate,
-                                                                                          rtpTimestamp );
-            frame.pData = pSrtpReceiver->frameBuffer;
-            frame.dataLength = frameBufferLength;
-            pSrtpReceiver->onFrameReadyCallbackFunc( pSrtpReceiver->pOnFrameReadyCallbackCustomContext,
-                                                     &frame );
+            if( pSrtpReceiver->onFrameReadyCallbackFunc )
+            {
+                memset( &frame, 0, sizeof( PeerConnectionFrame_t ) );
+                frame.version = PEER_CONNECTION_FRAME_CURRENT_VERSION;
+                frame.presentationUs = PEER_CONNECTION_SRTP_CONVERT_RTP_TIMESTAMP_TO_TIME_US( pSrtpReceiver->rxJitterBuffer.clockRate,
+                                                                                            rtpTimestamp );
+                frame.pData = pSrtpReceiver->frameBuffer;
+                frame.dataLength = frameBufferLength;
+                pSrtpReceiver->onFrameReadyCallbackFunc( pSrtpReceiver->pOnFrameReadyCallbackCustomContext,
+                                                         &frame );
+            }
         }
     }
 
@@ -360,7 +360,8 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
             }
 
             /* Mutex can only be created in executing scheduler. */
-            if( pSrtpSender->isSenderMutexInit == 0U )
+            if( ( pSrtpSender != NULL ) &&
+                ( pSrtpSender->isSenderMutexInit == 0U ) )
             {
                 pSrtpSender->senderMutex = xSemaphoreCreateMutex();
                 if( pSrtpSender->senderMutex == NULL )
