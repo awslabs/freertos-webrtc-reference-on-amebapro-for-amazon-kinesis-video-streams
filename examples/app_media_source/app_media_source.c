@@ -72,7 +72,7 @@ static void VideoTx_Task( void * pParameter )
         {
             /* Recevied message from data queue. */
             frameLength = sizeof( MediaFrame_t );
-            retMessageQueue = MessageQueue_Recv( &pVideoContext->dataQueue,
+            retMessageQueue = MessageQueue_Recv( &pVideoContext->dataTxQueue,
                                                  &frame,
                                                  &frameLength );
             if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
@@ -126,7 +126,7 @@ static void AudioTx_Task( void * pParameter )
         {
             /* Recevied message from data queue. */
             frameLength = sizeof( MediaFrame_t );
-            retMessageQueue = MessageQueue_Recv( &pAudioContext->dataQueue,
+            retMessageQueue = MessageQueue_Recv( &pAudioContext->dataTxQueue,
                                                  &frame,
                                                  &frameLength );
             if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
@@ -173,28 +173,31 @@ static void AudioTx_Task( void * pParameter )
         }
 
         /* Handle event. */
-        while( skipProcess == 0 )
+        if( skipProcess == 0 )
         {
-            /* Recevied message from data queue. */
-            frameLength = sizeof( MediaFrame_t );
-            retMessageQueue = MessageQueue_Recv( &pAudioContext->dataRxQueue,
-                                                &frame,
-                                                &frameLength );
-            if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
+            while( 1 )
             {
-                /* Received a media frame. */
-                LogVerbose( ( "Audio Rx frame(%ld), timestampUs: %llu", frame.size, frame.timestampUs ) );
-
-                AppMediaSourcePort_PlayAudioFrame( &frame );
-
-                if( frame.freeData )
+                /* Recevied message from data queue. */
+                frameLength = sizeof( MediaFrame_t );
+                retMessageQueue = MessageQueue_Recv( &pAudioContext->dataRxQueue,
+                                                    &frame,
+                                                    &frameLength );
+                if( retMessageQueue == MESSAGE_QUEUE_RESULT_OK )
                 {
-                    vPortFree( frame.pData );
+                    /* Received a media frame. */
+                    LogVerbose( ( "Audio Rx frame(%ld), timestampUs: %llu", frame.size, frame.timestampUs ) );
+
+                    AppMediaSourcePort_PlayAudioFrame( &frame );
+
+                    if( frame.freeData )
+                    {
+                        vPortFree( frame.pData );
+                    }
                 }
-            }
-            else
-            {
-                LogError( ( " AudioRx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
+                else
+                {
+                    LogError( ( " AudioRx_Task: MessageQueue_Recv failed with error %d", retMessageQueue ) );
+                }
             }
         }
 

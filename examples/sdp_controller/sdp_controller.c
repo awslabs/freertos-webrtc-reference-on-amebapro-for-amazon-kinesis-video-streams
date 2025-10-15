@@ -2384,95 +2384,36 @@ SdpControllerResult_t SdpController_DeserializeSdpMessage( const char * pSdpCont
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
+        while( sdpResult == SDP_RESULT_OK )
+        {
+            sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
 
-        if( sdpResult != SDP_RESULT_OK )
-        {
-            break;
-        }
-        else if( type == SDP_TYPE_MEDIA )
-        {
-            pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaName = pValue;
-            pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaNameLength = valueLength;
-            pSdpDescription->mediaCount++;
-        }
-        else if( pSdpDescription->mediaCount != 0 )
-        {
-            if( type == SDP_TYPE_ATTRIBUTE )
+            if( sdpResult != SDP_RESULT_OK )
             {
-                ret = ParseMediaAttributes( pSdpDescription, pValue, valueLength );
-                if( ret != SDP_CONTROLLER_RESULT_OK )
-                {
-                    LogError( ( "parseMediaAttributes fail, result %d", ret ) );
-                    break;
-                }
-            }
-            else if( type == SDP_TYPE_SESSION_INFO )
-            {
-                // Media Title
-                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].pMediaTitle = pValue;
-                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].mediaTitleLength = valueLength;
-            }
-            else
-            {
-                /* Do nothing. */
-            }
-        }
-        else
-        {
-            /* No media description before, these attributes belongs to session. */
-            if( type == SDP_TYPE_SESSION_NAME )
-            {
-                // SDP Session Name
-                pSdpDescription->pSessionName = pValue;
-                pSdpDescription->sessionNameLength = valueLength;
-            }
-            else if( type == SDP_TYPE_SESSION_INFO )
-            {
-                // SDP Session Information
-                pSdpDescription->pSessionInformation = pValue;
-                pSdpDescription->sessionInformationLength = valueLength;
-            }
-            else if( type == SDP_TYPE_URI )
-            {
-                // SDP URI
-                pSdpDescription->pUri = pValue;
-                pSdpDescription->uriLength = valueLength;
-            }
-            else if( type == SDP_TYPE_EMAIL )
-            {
-                // SDP Email Address
-                pSdpDescription->pEmailAddress = pValue;
-                pSdpDescription->emailAddressLength = valueLength;
+                break;
             }
             else if( type == SDP_TYPE_MEDIA )
             {
-                // SDP Phone number
-                pSdpDescription->pPhoneNumber = pValue;
-                pSdpDescription->phoneNumberLength = valueLength;
+                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaName = pValue;
+                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaNameLength = valueLength;
+                pSdpDescription->mediaCount++;
             }
-            else if( pOffer->mediaCount != 0 )
+            else if( pSdpDescription->mediaCount != 0 )
             {
-                // Version
-                stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pSdpDescription->version );
-                if( stringResult != STRING_UTILS_RESULT_OK )
+                if( type == SDP_TYPE_ATTRIBUTE )
                 {
-                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
-                                stringResult,
-                                ( int ) valueLength, pValue,
-                                pSdpDescription->version ) );
-                    ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
-                    break;
+                    ret = ParseMediaAttributes( pSdpDescription, pValue, valueLength );
+                    if( ret != SDP_CONTROLLER_RESULT_OK )
+                    {
+                        LogError( ( "parseMediaAttributes fail, result %d", ret ) );
+                        break;
+                    }
                 }
-            }
-            else if( type == SDP_TYPE_ATTRIBUTE )
-            {
-                ret = ParseSessionAttributes( pSdpDescription, pValue, valueLength );
-                if( ret != SDP_CONTROLLER_RESULT_OK )
+                else if( type == SDP_TYPE_SESSION_INFO )
                 {
                     // Media Title
-                    pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].pMediaTitle = pValue;
-                    pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].mediaTitleLength = valueLength;
+                    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].pMediaTitle = pValue;
+                    pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].mediaTitleLength = valueLength;
                 }
                 else
                 {
@@ -2485,50 +2426,50 @@ SdpControllerResult_t SdpController_DeserializeSdpMessage( const char * pSdpCont
                 if( type == SDP_TYPE_SESSION_NAME )
                 {
                     // SDP Session Name
-                    pOffer->pSessionName = pValue;
-                    pOffer->sessionNameLength = valueLength;
+                    pSdpDescription->pSessionName = pValue;
+                    pSdpDescription->sessionNameLength = valueLength;
                 }
                 else if( type == SDP_TYPE_SESSION_INFO )
                 {
                     // SDP Session Information
-                    pOffer->pSessionInformation = pValue;
-                    pOffer->sessionInformationLength = valueLength;
+                    pSdpDescription->pSessionInformation = pValue;
+                    pSdpDescription->sessionInformationLength = valueLength;
                 }
                 else if( type == SDP_TYPE_URI )
                 {
                     // SDP URI
-                    pOffer->pUri = pValue;
-                    pOffer->uriLength = valueLength;
+                    pSdpDescription->pUri = pValue;
+                    pSdpDescription->uriLength = valueLength;
                 }
                 else if( type == SDP_TYPE_EMAIL )
                 {
                     // SDP Email Address
-                    pOffer->pEmailAddress = pValue;
-                    pOffer->emailAddressLength = valueLength;
+                    pSdpDescription->pEmailAddress = pValue;
+                    pSdpDescription->emailAddressLength = valueLength;
                 }
                 else if( type == SDP_TYPE_PHONE )
                 {
                     // SDP Phone number
-                    pOffer->pPhoneNumber = pValue;
-                    pOffer->phoneNumberLength = valueLength;
+                    pSdpDescription->pPhoneNumber = pValue;
+                    pSdpDescription->phoneNumberLength = valueLength;
                 }
                 else if( type == SDP_TYPE_VERSION )
                 {
                     // Version
-                    stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pOffer->version );
+                    stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pSdpDescription->version );
                     if( stringResult != STRING_UTILS_RESULT_OK )
                     {
                         LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
                                     stringResult,
                                     ( int ) valueLength, pValue,
-                                    pOffer->version ) );
+                                    pSdpDescription->version ) );
                         ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
                         break;
                     }
                 }
                 else if( type == SDP_TYPE_ATTRIBUTE )
                 {
-                    ret = parseSessionAttributes( pOffer, pValue, valueLength );
+                    ret = ParseSessionAttributes( pSdpDescription, pValue, valueLength );
                     if( ret != SDP_CONTROLLER_RESULT_OK )
                     {
                         LogError( ( "parseSessionAttributes fail, result %d", ret ) );
