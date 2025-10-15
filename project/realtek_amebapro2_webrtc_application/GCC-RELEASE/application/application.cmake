@@ -635,15 +635,15 @@ endif()
 
 if(NOT DEFINED WEBRTC_APPLICATION_DEMO)
 	message(STATUS "Build WebRTC Application project")
-	include(${repo_root}/project/webrtc_master_demo.cmake)
+	include(${repo_root}/project/webrtc_demo.cmake)
 	list(
 		APPEND app_sources
-		${webrtc_master_demo_src}
+		${webrtc_demo_src}
 	)
 
 	list(
 		APPEND app_inc_path
-		${webrtc_master_demo_include}
+		${webrtc_demo_include}
 	)
 else()
 	message(STATUS "Build other project")

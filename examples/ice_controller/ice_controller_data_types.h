@@ -174,6 +174,7 @@ typedef enum IceControllerResult
     ICE_CONTROLLER_RESULT_FAIL_CONNECTION_NOT_READY,
     ICE_CONTROLLER_RESULT_FAIL_CREATE_TURN_CHANNEL_DATA,
     ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE,
+    ICE_CONTROLLER_RESULT_FAIL_SEND_NOMINATION_REQUEST,
     ICE_CONTROLLER_RESULT_FAIL_FIND_SOCKET_CONTEXT,
     ICE_CONTROLLER_RESULT_FAIL_FIND_NOMINATED_CONTEXT,
     ICE_CONTROLLER_RESULT_FAIL_SOCKET_CONTEXT_ALREADY_CLOSED,
@@ -328,6 +329,22 @@ typedef struct IceControllerInitConfig
     OnRecvNonStunPacketCallback_t onRecvNonStunPacketFunc;
     void * pOnRecvNonStunPacketCallbackContext;
 } IceControllerInitConfig_t;
+
+typedef struct IceControllerStartConfig
+{
+    const char * pLocalUserName;
+    size_t localUserNameLength;
+    const char * pLocalPassword;
+    size_t localPasswordLength;
+    const char * pRemoteUserName;
+    size_t remoteUserNameLength;
+    const char * pRemotePassword;
+    size_t remotePasswordLength;
+    const char * pCombinedName;
+    size_t combinedNameLength;
+
+    uint8_t isControlling;
+} IceControllerStartConfig_t;
 
 typedef struct IceControllerContext
 {

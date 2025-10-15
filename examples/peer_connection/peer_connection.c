@@ -75,7 +75,7 @@ static PeerConnectionResult_t HandleIceClosing( PeerConnectionSession_t * pSessi
                                                 PeerConnectionSessionRequestMessage_t * pRequestMessage );
 static PeerConnectionResult_t PeerConnection_OnRtcpSenderReportCallback( PeerConnectionSession_t * pSession,
                                                                          PeerConnectionSessionRequestMessage_t * pRequestMessage );
-static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession );
+static int32_t InitDtlsSession( PeerConnectionSession_t * pSession, uint8_t isServer );
 static int32_t ExecuteDtlsHandshake( PeerConnectionSession_t * pSession );
 static int32_t OnDtlsHandshakeComplete( PeerConnectionSession_t * pSession );
 static void PeerConnection_SetTimer( PeerConnectionSession_t * pSession );
@@ -743,13 +743,13 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
                 ret = OnIceEventProcessIceCandidatesAndPairs( pSession );
                 break;
             case ICE_CONTROLLER_CB_EVENT_PEER_TO_PEER_CONNECTION_FOUND:
-                /* Start DTLS handshaking. */
                 #if METRIC_PRINT_ENABLED
                 Metric_StartEvent( METRIC_EVENT_PC_DTLS_HANDSHAKING );
                 #endif
-                ret = StartDtlsHandshake( pSession );
+                /* Start DTLS handshaking. */
+                ret = ExecuteDtlsHandshake( pSession );
 
-                /* This must set after StartDtlsHandshake, or the other thread might execute handshake earlier than expectation. */
+                /* This must set after ExecuteDtlsHandshake, or the other thread might execute handshake earlier than expectation. */
                 pSession->state = PEER_CONNECTION_SESSION_STATE_P2P_CONNECTION_FOUND;
                 break;
             case ICE_CONTROLLER_CB_EVENT_PERIODIC_CONNECTION_CHECK:
@@ -774,7 +774,7 @@ static int32_t HandleIceEventCallback( void * pCustomContext,
     return ret;
 }
 
-static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
+static int32_t InitDtlsSession( PeerConnectionSession_t * pSession, uint8_t isServer )
 {
     int32_t ret = 0;
     DtlsTransportStatus_t xNetworkStatus = DTLS_SUCCESS;
@@ -801,6 +801,8 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
         /* Disable SNI server name indication*/
         // https://mbed-tls.readthedocs.io/en/latest/kb/how-to/use-sni/
         pDtlsSession->xNetworkCredentials.disableSni = pdTRUE;
+
+        pDtlsSession->isServer = isServer;
     }
 
     if( ret == 0 )
@@ -821,7 +823,7 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
             /* Attempt to create a DTLS connection. */
             xNetworkStatus = DTLS_Init( &pDtlsSession->xNetworkContext,
                                         &pDtlsSession->xNetworkCredentials,
-                                        0U );
+                                        isServer );
 
             if( xNetworkStatus != DTLS_SUCCESS )
             {
@@ -834,9 +836,6 @@ static int32_t StartDtlsHandshake( PeerConnectionSession_t * pSession )
     if( ret == 0 )
     {
         pSession->dtlsHandshakingTimeoutMs = ( NetworkingUtils_GetCurrentTimeUs( NULL ) / 1000 ) + PEER_CONNECTION_DTLS_HANDSHAKING_TIMEOUT_MS;
-
-        /* Start the DTLS handshaking. */
-        ret = ExecuteDtlsHandshake( pSession );
     }
 
     return ret;
@@ -1502,7 +1501,6 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
     MessageQueueResult_t retMessageQueue;
     TimerControllerResult_t retTimer;
     char tempName[ 20 ];
-    DtlsSession_t * pDtlsSession = NULL;
     static uint8_t initSeq = 0;
 
     /* Avoid unused variable warning. */
@@ -1532,12 +1530,6 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
         /* Generate answer cert in DER format */
         if( peerConnectionContext.dtlsContext.isInitialized == 0 )
         {
-            /* Initialize DTLS session. */
-            pDtlsSession = &pSession->dtlsSession;
-            memset( pDtlsSession,
-                    0,
-                    sizeof( DtlsSession_t ) );
-
             /* pCtx->dtlsContext.isInitialized would be set to 1 in InitializeDtlsContext(). */
             ret = InitializeDtlsContext( &peerConnectionContext.dtlsContext );
         }
@@ -1630,7 +1622,7 @@ PeerConnectionResult_t PeerConnection_Init( PeerConnectionSession_t * pSession,
                          tempName,
                          4096,
                          &pSession->iceControllerContext,
-                         tskIDLE_PRIORITY + 3,
+                         tskIDLE_PRIORITY + 5,
                          NULL ) != pdPASS )
         {
             LogError( ( "xTaskCreate(%s) failed", tempName ) );
@@ -1769,6 +1761,8 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
     PeerConnectionBufferSessionDescription_t * pTargetRemoteSdp = NULL;
     uint8_t i;
     EventBits_t uxBits = 0U;
+    int32_t retDtls = 0;
+    IceControllerStartConfig_t iceStartConfig;
 
     if( ( pSession == NULL ) ||
         ( pBufferSessionDescription == NULL ) )
@@ -1835,6 +1829,27 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
 
     if( ret == PEER_CONNECTION_RESULT_OK )
     {
+        /* Follow the setup value of remote SDP message to configure local DTLS role. All possible values in setup
+         * are 'active', 'actpass', and 'passive'. Follow rule in https://www.rfc-editor.org/rfc/rfc4572#section-6.2
+         * to start DTLS server mode only if the remote side is using 'active' mode. */
+        if( pTargetRemoteSdp->sdpDescription.quickAccess.dtlsRole == SDP_CONTROLLER_DTLS_ROLE_ACTIVE )
+        {
+            retDtls = InitDtlsSession( pSession, 1U );
+        }
+        else
+        {
+            retDtls = InitDtlsSession( pSession, 0U );
+        }
+
+        if( retDtls != 0 )
+        {
+            LogError( ( "Failed to initialize DTLS session, result: %ld", retDtls ) );
+            ret = PEER_CONNECTION_RESULT_FAIL_INIT_DTLS_SESSION;
+        }
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
         memcpy( pSession->remoteUserName,
                 pTargetRemoteSdp->sdpDescription.quickAccess.pIceUfrag,
                 pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength );
@@ -1855,18 +1870,21 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                 pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength );
         pSession->remoteCertFingerprint[ pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength ] = '\0';
         pSession->remoteCertFingerprintLength = pTargetRemoteSdp->sdpDescription.quickAccess.fingerprintLength;
+        memset( &iceStartConfig, 0, sizeof( iceStartConfig ) );
+        iceStartConfig.isControlling = pSession->dtlsSession.isServer != 0U? 1U:0U;
+        iceStartConfig.pLocalUserName = &( peerConnectionContext.localUserName[ 0 ] );
+        iceStartConfig.localUserNameLength = PEER_CONNECTION_USER_NAME_LENGTH;
+        iceStartConfig.pLocalPassword = &( peerConnectionContext.localPassword[ 0 ] );
+        iceStartConfig.localPasswordLength = PEER_CONNECTION_PASSWORD_LENGTH;
+        iceStartConfig.pRemoteUserName = &( pSession->remoteUserName[ 0 ] );
+        iceStartConfig.remoteUserNameLength = pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength;
+        iceStartConfig.pRemotePassword = &( pSession->remotePassword[ 0 ] );
+        iceStartConfig.remotePasswordLength = pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength;
+        iceStartConfig.pCombinedName = &( pSession->combinedName[ 0 ] );
+        iceStartConfig.combinedNameLength = strlen( pSession->combinedName );
 
         iceControllerResult = IceController_Start( &pSession->iceControllerContext,
-                                                   peerConnectionContext.localUserName,
-                                                   PEER_CONNECTION_USER_NAME_LENGTH,
-                                                   peerConnectionContext.localPassword,
-                                                   PEER_CONNECTION_PASSWORD_LENGTH,
-                                                   pSession->remoteUserName,
-                                                   pTargetRemoteSdp->sdpDescription.quickAccess.iceUfragLength,
-                                                   pSession->remotePassword,
-                                                   pTargetRemoteSdp->sdpDescription.quickAccess.icePwdLength,
-                                                   pSession->combinedName,
-                                                   strlen( pSession->combinedName ) );
+                                                   &iceStartConfig );
         if( iceControllerResult != ICE_CONTROLLER_RESULT_OK )
         {
             LogWarn( ( "IceController_Start fail, result: %d.", iceControllerResult ) );
