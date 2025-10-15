@@ -133,6 +133,7 @@ Download the flash tool `Pro2_PG_tool_v1.4.3` from [Realtek SDK](https://github.
 1. [Join Storage Session](#join-storage-session-support)
 1. [Enabling Metrics Logging](#enabling-metrics-logging)
 1. [Codecs Options](#codecs-options)
+1. [Viewer](#viewer)
 
 ---
 
@@ -244,6 +245,15 @@ Under `/* Audio codec setting. */`.
 - MULAW: Set `AUDIO_G711_MULAW` to 1
 - ALAW: Set `AUDIO_G711_ALAW` to 1
 - OPUS: Set `AUDIO_OPUS` to 1
+
+---
+
+### Viewer
+By default, the WebRTC application is built as master side. To configure the application to run as a viewer, set the `BUILD_VIEWER_APPLICATION` flag to `ON` during the cmake configuration:
+
+```sh
+cmake .. -G"Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake -DBUILD_VIEWER_APPLICATION=ON
+```
 
 ---
 

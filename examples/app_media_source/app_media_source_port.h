@@ -44,6 +44,7 @@ int32_t AppMediaSourcePort_Start( OnFrameReadyToSend_t onVideoFrameReadyToSendFu
                                   void * pOnAudioFrameReadyToSendCustomContext );
 void AppMediaSourcePort_Stop( void );
 void AppMediaSourcePort_Destroy( void );
+void AppMediaSourcePort_PlayAudioFrame( MediaFrame_t * pFrame );
 
 #ifdef __cplusplus
 }

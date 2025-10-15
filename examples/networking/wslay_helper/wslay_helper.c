@@ -675,6 +675,8 @@ static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWe
     char * pSig;
     size_t sigLength;
     SigV4Credentials_t sigv4Credential;
+    char * pAmpersand = NULL, * pClientId = NULL;
+    size_t clientIdlength = 0;
 
     if( ( pUrl == NULL ) || ( pHost == NULL ) || ( pPath == NULL ) || ( pOutput == NULL ) || ( pOutputLength == NULL ) )
     {
@@ -709,6 +711,7 @@ static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWe
     {
         /* Parse existing query parameters. */
         pEqual = strchr( pQueryStart, '=' );
+        pAmpersand = strchr( pQueryStart, '&' );
         if( pEqual == NULL )
         {
             /* No equal found, unexpected. */
@@ -716,8 +719,24 @@ static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWe
         }
         else
         {
-            pChannelArnValue = pEqual + 1;
-            channelArnValueLength = pQueryStart + queryLength - pChannelArnValue;
+            /* There are two possibilities in URL:
+             * 1. Master: X-Amz-ChannelARN=${ARN} follow by nothing.
+             * 2. Viewer: X-Amz-ChannelARN=${ARN}&X-Amz-ClientId=${ID} */
+            if( pAmpersand == NULL )
+            {
+                /* Master case */
+                pChannelArnValue = pEqual + 1;
+                channelArnValueLength = pQueryStart + queryLength - pChannelArnValue;
+                clientIdlength = 0;
+            }
+            else
+            {
+                /* Viewer case */
+                pChannelArnValue = pEqual + 1;
+                channelArnValueLength = pAmpersand - pChannelArnValue;
+                pClientId = ( pAmpersand + 1 );
+                clientIdlength = pQueryStart + queryLength - pClientId;
+            }
         }
     }
 
@@ -738,6 +757,28 @@ static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWe
         ret = WriteUriEncodedChannelArn( &pCurrentWrite, &remainLength, pChannelArnValue, channelArnValueLength );
     }
 
+    /* X-Amz-ChannelARN query parameter. */
+    if( ( ret == NETWORKING_WSLAY_RESULT_OK ) &&
+        ( pClientId != NULL ) )
+    {
+        /* Write X-Amz-ClientId for viewer when exist. */
+        writtenLength = snprintf( pCurrentWrite,
+                                  remainLength,
+                                  "&%.*s",
+                                  ( int ) clientIdlength,
+                                  pClientId );
+        if( ( writtenLength < 0 ) || ( writtenLength == remainLength ) )
+        {
+            LogError( ( "Failed to write X-Amz-ClientId key!" ) );
+            ret = -1;
+        }
+        else
+        {
+            pCurrentWrite += writtenLength;
+            remainLength -= writtenLength;
+        }
+    }
+
     /* X-Amz-Credential query parameter. */
     if( ret == NETWORKING_WSLAY_RESULT_OK )
     {
@@ -756,7 +797,7 @@ static WebsocketResult_t GenerateQueryParameters( NetworkingWslayContext_t * pWe
         ret = WriteUriEncodedExpires( &pCurrentWrite, &remainLength );
     }
 
-    // /* X-Amz-Security-Token query parameter. */
+    /* X-Amz-Security-Token query parameter. */
     if( ( ret == NETWORKING_WSLAY_RESULT_OK ) && ( pAwsCredentials->sessionTokenLength > 0U ) )
     {
         ret = WriteUriEncodeSecurityToken( pWebsocketCtx, pAwsCredentials, &pCurrentWrite, &remainLength );

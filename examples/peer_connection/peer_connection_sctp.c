@@ -264,9 +264,7 @@ PeerConnectionResult_t PeerConnectionSCTP_AllocateSCTP( PeerConnectionSession_t 
     pSession->sctpSession.sctpSessionCallbacks.dataChannelOpenAckCallback = OnSCTPSessionDataChannelAckOpen;
     pSession->sctpSession.sctpSessionCallbacks.pUserData = ( void * ) pSession;
 
-    /* TODO: As viewer is not supported currently this side is always DTLS
-     * client. */
-    if( Sctp_CreateSession( &( pSession->sctpSession ), 0 ) == SCTP_UTILS_RESULT_OK )
+    if( Sctp_CreateSession( &( pSession->sctpSession ), pSession->dtlsSession.isServer ) == SCTP_UTILS_RESULT_OK )
     {
         uint32_t ulChannelsCreateFailed = 0;
         PeerConnectionDataChannel_t * pxIterator = pSession->pDataChannels;

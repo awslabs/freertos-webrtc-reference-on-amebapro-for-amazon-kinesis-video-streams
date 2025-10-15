@@ -208,6 +208,7 @@ typedef struct DtlsSession {
     DtlsNetworkContext_t xNetworkContext;
     DtlsTransportParams_t xDtlsTransportParams;
     DtlsNetworkCredentials_t xNetworkCredentials;
+    uint8_t isServer;
 } DtlsSession_t;
 
 /**

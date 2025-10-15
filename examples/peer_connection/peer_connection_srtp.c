@@ -35,23 +35,6 @@
 #include "peer_connection_h265_helper.h"
 #include "peer_connection_opus_helper.h"
 
-/* At write frame, we reserve 2 bytes at the beginning of payload buffer for re-transmission if RTX is enabled. */
-/* The format of a retransmission packet is shown below:
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |                         RTP Header                            |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- |            OSN                |                               |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
- |                  Original RTP Packet Payload                  |
- |                                                               |
- +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
-#define PEER_CONNECTION_SRTP_RTX_WRITE_RESERVED_BYTES ( 2 )
-#define PEER_CONNECTION_SRTP_RTP_PAYLOAD_MAX_LENGTH      ( 1200 )
-#define PEER_CONNECTION_SRTP_JITTER_BUFFER_TOLERENCE_TIME_SECOND ( 2 )
-
 /*-----------------------------------------------------------*/
 
 static PeerConnectionResult_t OnJitterBufferFrameReady( void * pCustomContext,
@@ -112,6 +95,19 @@ static PeerConnectionResult_t OnJitterBufferFrameDrop( void * pCustomContext,
                                                        uint16_t endSequence )
 {
     PeerConnectionResult_t ret = PEER_CONNECTION_RESULT_OK;
+
+    if( pCustomContext == NULL )
+    {
+        LogError( ( "Invalid input, pCustomContext: %p", pCustomContext ) );
+        ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
+    }
+
+    if( ret == PEER_CONNECTION_RESULT_OK )
+    {
+        LogDebug( ( "Dropping packets from start seq: %u to end seq: %u",
+                    startSequence,
+                    endSequence ) );
+    }
 
     return ret;
 }
@@ -263,7 +259,14 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         srtp_policy_setter( &receivePolicy.rtp );
         srtcp_policy_setter( &receivePolicy.rtcp );
 
-        receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        if( pSession->dtlsSession.isServer == 0U )
+        {
+            receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        }
+        else
+        {
+            receivePolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        }
         receivePolicy.ssrc.type = ssrc_any_inbound;
         receivePolicy.next = NULL;
 
@@ -282,7 +285,14 @@ PeerConnectionResult_t PeerConnectionSrtp_Init( PeerConnectionSession_t * pSessi
         srtp_policy_setter( &transmitPolicy.rtp );
         srtcp_policy_setter( &transmitPolicy.rtcp );
 
-        transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        if( pSession->dtlsSession.isServer == 0U )
+        {
+            transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.clientWriteKey;
+        }
+        else
+        {
+            transmitPolicy.key = pSession->dtlsSession.xNetworkCredentials.dtlsKeyingMaterial.serverWriteKey;
+        }
         transmitPolicy.ssrc.type = ssrc_any_outbound;
         transmitPolicy.next = NULL;
 

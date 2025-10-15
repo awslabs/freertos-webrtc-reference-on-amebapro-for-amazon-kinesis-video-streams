@@ -33,9 +33,9 @@ extern "C" {
 #define SDP_CONTROLLER_MESSAGE_TEMPLATE_HEAD "{\"type\": \"%s\", \"sdp\": \""
 #define SDP_CONTROLLER_MESSAGE_TEMPLATE_TAIL "\"}"
 
-SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferContent,
-                                                         size_t sdpOfferContentLength,
-                                                         SdpControllerSdpDescription_t * pOffer );
+SdpControllerResult_t SdpController_DeserializeSdpMessage( const char * pSdpContent,
+                                                           size_t sdpContentLength,
+                                                           SdpControllerSdpDescription_t * pSdpDescription );
 SdpControllerResult_t SdpController_SerializeSdpMessageByDescription( SdpControllerMessageType_t messageType,
                                                                       SdpControllerSdpDescription_t * pSdpDescription,
                                                                       char * pOutputSerializedSdpMessage,

@@ -167,27 +167,27 @@
 #define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX "8"
 #define SDP_CONTROLLER_CODEC_ALAW_DEFAULT_INDEX_LENGTH ( 1 )
 
-static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    SdpAttribute_t * pAttribute );
-static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    const char * pAttributeBuffer,
                                                    size_t attributeBufferLength );
-static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseSessionAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                      const char * pAttributeBuffer,
                                                      size_t attributeBufferLength );
-static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeOrigin( SdpSerializerContext_t * pCtx,
                                               SdpControllerOrigin_t * pOrigin );
-static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeTiming( SdpSerializerContext_t * pCtx,
                                               SdpControllerTiming_t * pTiming );
-static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeAttributes( SdpSerializerContext_t * pCtx,
                                                   SdpControllerAttributes_t * pAttributes,
                                                   uint16_t attributeCount );
-static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeConnectionInfo( SdpSerializerContext_t * pCtx,
                                                       SdpControllerConnectionInformation_t * pConnectionInfo );
-static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeMedias( SdpSerializerContext_t * pCtx,
                                               SdpControllerMediaDescription_t * pMediaDescriptions,
                                               uint16_t mediaCount );
-static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
+static SdpControllerResult_t SerializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
                                                   char * pOutputBuffer,
                                                   size_t * pOutputBufferSize );
 static SdpControllerResult_t PopulateTransceiverSsrc( char ** ppBuffer,
@@ -257,16 +257,16 @@ static const SdpControllerAttributes_t * FindFmtpBasedOnCodec( const SdpControll
                                                                size_t attributeCount,
                                                                uint32_t codec );
 
-static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    SdpAttribute_t * pAttribute )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     StringUtilsResult_t stringResult;
 
-    if( ( pOffer == NULL ) ||
+    if( ( pSdpDescription == NULL ) ||
         ( pAttribute == NULL ) )
     {
-        LogError( ( "Fail to parse extra attributes, pOffer: %p, pAttribute: %p", pOffer, pAttribute ) );
+        LogError( ( "Fail to parse extra attributes, pSdpDescription: %p, pAttribute: %p", pSdpDescription, pAttribute ) );
         ret = SDP_CONTROLLER_RESULT_SDP_SESSION_ATTRIBUTE_MAX_EXCEDDED;
     }
 
@@ -278,21 +278,21 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
             ( pAttribute->attributeValueLength > SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH ) )
         {
             /* Found fingerprint, store it as extra info. */
-            pOffer->quickAccess.pFingerprint = pAttribute->pAttributeValue + SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH;
-            pOffer->quickAccess.fingerprintLength = pAttribute->attributeValueLength - SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH;
+            pSdpDescription->quickAccess.pFingerprint = pAttribute->pAttributeValue + SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH;
+            pSdpDescription->quickAccess.fingerprintLength = pAttribute->attributeValueLength - SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_FINGERPRINT_PREFIX_LENGTH;
         }
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_SETUP_LENGTH ) == 0 ) )
         {
             /* Found setup, store it as extra info. */
             if( ( pAttribute->attributeValueLength == SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) &&
-                ( strncmp( SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) == 0 ) )
+                ( strncmp( SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE, pAttribute->pAttributeValue, SDP_CONTROLLER_MEDIA_DTLS_ROLE_ACTIVE_LENGTH ) == 0 ) )
             {
-                pOffer->quickAccess.dtlsRole = SDP_CONTROLLER_DTLS_ROLE_ACTIVE;
+                pSdpDescription->quickAccess.dtlsRole = SDP_CONTROLLER_DTLS_ROLE_ACTIVE;
             }
             else
             {
-                pOffer->quickAccess.dtlsRole = SDP_CONTROLLER_DTLS_ROLE_ACTPASS;
+                pSdpDescription->quickAccess.dtlsRole = SDP_CONTROLLER_DTLS_ROLE_ACTPASS;
             }
         }
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_OPTION_LENGTH ) &&
@@ -300,19 +300,19 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
                  ( pAttribute->attributeValueLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION, pAttribute->pAttributeValue, SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_ICE_OPTION_LENGTH ) == 0 ) )
         {
-            pOffer->quickAccess.isIceTrickle = 1U;
+            pSdpDescription->quickAccess.isIceTrickle = 1U;
         }
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_UFRAG_LENGTH ) == 0 ) )
         {
-            pOffer->quickAccess.pIceUfrag = pAttribute->pAttributeValue;
-            pOffer->quickAccess.iceUfragLength = pAttribute->attributeValueLength;
+            pSdpDescription->quickAccess.pIceUfrag = pAttribute->pAttributeValue;
+            pSdpDescription->quickAccess.iceUfragLength = pAttribute->attributeValueLength;
         }
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_ICE_PWD_LENGTH ) == 0 ) )
         {
-            pOffer->quickAccess.pIcePwd = pAttribute->pAttributeValue;
-            pOffer->quickAccess.icePwdLength = pAttribute->attributeValueLength;
+            pSdpDescription->quickAccess.pIcePwd = pAttribute->pAttributeValue;
+            pSdpDescription->quickAccess.icePwdLength = pAttribute->attributeValueLength;
         }
         else if( ( pAttribute->attributeNameLength == SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH ) &&
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_EXTMAP_LENGTH ) == 0 ) &&
@@ -324,18 +324,18 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
             if( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL, pFindStart, SDP_CONTROLLER_MEDIA_ATTRIBUTE_VALUE_TWCC_EXT_URL_LENGTH ) == 0 )
             {
                 /* Found TWCC ext URL. */
-                stringResult = StringUtils_ConvertStringToUl( pAttribute->pAttributeValue, length, &pOffer->quickAccess.twccExtId );
+                stringResult = StringUtils_ConvertStringToUl( pAttribute->pAttributeValue, length, &pSdpDescription->quickAccess.twccExtId );
                 if( stringResult != STRING_UTILS_RESULT_OK )
                 {
                     LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
                                 stringResult,
                                 ( int ) length, pAttribute->pAttributeValue,
-                                pOffer->quickAccess.twccExtId ) );
+                                pSdpDescription->quickAccess.twccExtId ) );
                     ret = SDP_CONTROLLER_RESULT_SDP_INVALID_TWCC_ID;
                 }
                 else
                 {
-                    LogDebug( ( "Found TWCC, ID: %lu", pOffer->quickAccess.twccExtId ) );
+                    LogDebug( ( "Found TWCC, ID: %lu", pSdpDescription->quickAccess.twccExtId ) );
                 }
             }
         }
@@ -343,11 +343,11 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
                  ( strncmp( SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE, pAttribute->pAttributeName, SDP_CONTROLLER_MEDIA_ATTRIBUTE_NAME_CANDIDATE_LENGTH ) == 0 ) )
         {
             /* Ensure we do not exceed the maximum candidate limit */
-            if( pOffer->quickAccess.remoteCandidateCount < SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
+            if( pSdpDescription->quickAccess.remoteCandidateCount < SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
             {
-                pOffer->quickAccess.pRemoteCandidates[pOffer->quickAccess.remoteCandidateCount] = pAttribute->pAttributeValue;
-                pOffer->quickAccess.remoteCandidateLengths[pOffer->quickAccess.remoteCandidateCount] = pAttribute->attributeValueLength;
-                pOffer->quickAccess.remoteCandidateCount++;
+                pSdpDescription->quickAccess.pRemoteCandidates[ pSdpDescription->quickAccess.remoteCandidateCount ] = pAttribute->pAttributeValue;
+                pSdpDescription->quickAccess.remoteCandidateLengths[ pSdpDescription->quickAccess.remoteCandidateCount ] = pAttribute->attributeValueLength;
+                pSdpDescription->quickAccess.remoteCandidateCount++;
             }
             else
             {
@@ -359,17 +359,17 @@ static SdpControllerResult_t ParseExtraAttributes( SdpControllerSdpDescription_t
     return ret;
 }
 
-static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseMediaAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                    const char * pAttributeBuffer,
                                                    size_t attributeBufferLength )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
     SdpAttribute_t attribute;
-    uint8_t mediaIndex = pOffer->mediaCount - 1;
-    uint8_t * pAttributeCount = &pOffer->mediaDescriptions[ mediaIndex ].mediaAttributesCount;
+    uint8_t mediaIndex = pSdpDescription->mediaCount - 1;
+    uint8_t * pAttributeCount = &pSdpDescription->mediaDescriptions[ mediaIndex ].mediaAttributesCount;
 
-    if( pOffer->mediaDescriptions[ mediaIndex ].mediaAttributesCount >= SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
+    if( pSdpDescription->mediaDescriptions[ mediaIndex ].mediaAttributesCount >= SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_MEDIA_ATTRIBUTE_MAX_EXCEDDED;
     }
@@ -385,23 +385,23 @@ static SdpControllerResult_t parseMediaAttributes( SdpControllerSdpDescription_t
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        pOffer->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].pAttributeName = attribute.pAttributeName;
-        pOffer->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].attributeNameLength = attribute.attributeNameLength;
-        pOffer->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].pAttributeValue = attribute.pAttributeValue;
-        pOffer->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].attributeValueLength = attribute.attributeValueLength;
+        pSdpDescription->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].pAttributeName = attribute.pAttributeName;
+        pSdpDescription->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].attributeNameLength = attribute.attributeNameLength;
+        pSdpDescription->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].pAttributeValue = attribute.pAttributeValue;
+        pSdpDescription->mediaDescriptions[ mediaIndex ].attributes[ *pAttributeCount ].attributeValueLength = attribute.attributeValueLength;
         ( *pAttributeCount )++;
     }
 
     /* Parse extra attributes to accerlate SDP creation later. */
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        ret = ParseExtraAttributes( pOffer, &attribute );
+        ret = ParseExtraAttributes( pSdpDescription, &attribute );
     }
 
     return ret;
 }
 
-static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription_t * pOffer,
+static SdpControllerResult_t ParseSessionAttributes( SdpControllerSdpDescription_t * pSdpDescription,
                                                      const char * pAttributeBuffer,
                                                      size_t attributeBufferLength )
 {
@@ -409,7 +409,7 @@ static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription
     SdpResult_t sdpResult = SDP_RESULT_OK;
     SdpAttribute_t attribute;
 
-    if( pOffer->sessionAttributesCount >= SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
+    if( pSdpDescription->sessionAttributesCount >= SDP_CONTROLLER_MAX_SDP_ATTRIBUTES_COUNT )
     {
         ret = SDP_CONTROLLER_RESULT_SDP_SESSION_ATTRIBUTE_MAX_EXCEDDED;
     }
@@ -425,23 +425,23 @@ static SdpControllerResult_t parseSessionAttributes( SdpControllerSdpDescription
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        pOffer->attributes[ pOffer->sessionAttributesCount ].pAttributeName = attribute.pAttributeName;
-        pOffer->attributes[ pOffer->sessionAttributesCount ].attributeNameLength = attribute.attributeNameLength;
-        pOffer->attributes[ pOffer->sessionAttributesCount ].pAttributeValue = attribute.pAttributeValue;
-        pOffer->attributes[ pOffer->sessionAttributesCount ].attributeValueLength = attribute.attributeValueLength;
-        pOffer->sessionAttributesCount++;
+        pSdpDescription->attributes[ pSdpDescription->sessionAttributesCount ].pAttributeName = attribute.pAttributeName;
+        pSdpDescription->attributes[ pSdpDescription->sessionAttributesCount ].attributeNameLength = attribute.attributeNameLength;
+        pSdpDescription->attributes[ pSdpDescription->sessionAttributesCount ].pAttributeValue = attribute.pAttributeValue;
+        pSdpDescription->attributes[ pSdpDescription->sessionAttributesCount ].attributeValueLength = attribute.attributeValueLength;
+        pSdpDescription->sessionAttributesCount++;
     }
 
     /* Parse extra attributes to accerlate SDP creation later. */
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        ret = ParseExtraAttributes( pOffer, &attribute );
+        ret = ParseExtraAttributes( pSdpDescription, &attribute );
     }
 
     return ret;
 }
 
-static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeOrigin( SdpSerializerContext_t * pCtx,
                                               SdpControllerOrigin_t * pOrigin )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
@@ -468,7 +468,7 @@ static SdpControllerResult_t serializeOrigin( SdpSerializerContext_t * pCtx,
     return ret;
 }
 
-static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeTiming( SdpSerializerContext_t * pCtx,
                                               SdpControllerTiming_t * pTiming )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
@@ -489,7 +489,7 @@ static SdpControllerResult_t serializeTiming( SdpSerializerContext_t * pCtx,
     return ret;
 }
 
-static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeAttributes( SdpSerializerContext_t * pCtx,
                                                   SdpControllerAttributes_t * pAttributes,
                                                   uint16_t attributeCount )
 {
@@ -520,7 +520,7 @@ static SdpControllerResult_t serializeAttributes( SdpSerializerContext_t * pCtx,
     return ret;
 }
 
-static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeConnectionInfo( SdpSerializerContext_t * pCtx,
                                                       SdpControllerConnectionInformation_t * pConnectionInfo )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
@@ -542,7 +542,7 @@ static SdpControllerResult_t serializeConnectionInfo( SdpSerializerContext_t * p
     return ret;
 }
 
-static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
+static SdpControllerResult_t SerializeMedias( SdpSerializerContext_t * pCtx,
                                               SdpControllerMediaDescription_t * pMediaDescriptions,
                                               uint16_t mediaCount )
 {
@@ -577,14 +577,14 @@ static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
         }
 
         /* Media connection information */
-        ret = serializeConnectionInfo( pCtx, &pCurrentMedia->connectionInformation );
+        ret = SerializeConnectionInfo( pCtx, &pCurrentMedia->connectionInformation );
         if( ret != SDP_CONTROLLER_RESULT_OK )
         {
             break;
         }
 
         /* Append media attributes. */
-        ret = serializeAttributes( pCtx, &pCurrentMedia->attributes[ 0 ], pCurrentMedia->mediaAttributesCount );
+        ret = SerializeAttributes( pCtx, &pCurrentMedia->attributes[ 0 ], pCurrentMedia->mediaAttributesCount );
         if( ret != SDP_CONTROLLER_RESULT_OK )
         {
             break;
@@ -594,7 +594,7 @@ static SdpControllerResult_t serializeMedias( SdpSerializerContext_t * pCtx,
     return ret;
 }
 
-static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
+static SdpControllerResult_t SerializeSdpMessage( SdpControllerSdpDescription_t * pSdpDescription,
                                                   char * pOutputBuffer,
                                                   size_t * pOutputBufferSize )
 {
@@ -624,7 +624,7 @@ static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* Append origin. */
-        ret = serializeOrigin( &ctx, &pSdpDescription->origin );
+        ret = SerializeOrigin( &ctx, &pSdpDescription->origin );
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
@@ -641,19 +641,19 @@ static SdpControllerResult_t serializeSdpMessage( SdpControllerSdpDescription_t 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* Append timing description. */
-        ret = serializeTiming( &ctx, &pSdpDescription->timingDescription );
+        ret = SerializeTiming( &ctx, &pSdpDescription->timingDescription );
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* Append session attributes. */
-        ret = serializeAttributes( &ctx, &pSdpDescription->attributes[ 0 ], pSdpDescription->sessionAttributesCount );
+        ret = SerializeAttributes( &ctx, &pSdpDescription->attributes[ 0 ], pSdpDescription->sessionAttributesCount );
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         /* Append media information. */
-        ret = serializeMedias( &ctx, &pSdpDescription->mediaDescriptions[ 0 ], pSdpDescription->mediaCount );
+        ret = SerializeMedias( &ctx, &pSdpDescription->mediaDescriptions[ 0 ], pSdpDescription->mediaCount );
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
@@ -2353,9 +2353,9 @@ static SdpControllerResult_t PopulateSessionAttributes( SdpControllerSdpDescript
     return ret;
 }
 
-SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferContent,
-                                                         size_t sdpOfferContentLength,
-                                                         SdpControllerSdpDescription_t * pOffer )
+SdpControllerResult_t SdpController_DeserializeSdpMessage( const char * pSdpContent,
+                                                           size_t sdpContentLength,
+                                                           SdpControllerSdpDescription_t * pSdpDescription )
 {
     SdpControllerResult_t ret = SDP_CONTROLLER_RESULT_OK;
     SdpResult_t sdpResult = SDP_RESULT_OK;
@@ -2365,16 +2365,16 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
     size_t valueLength;
     uint8_t type;
 
-    if( ( pSdpOfferContent == NULL ) || ( pOffer == NULL ) )
+    if( ( pSdpContent == NULL ) || ( pSdpDescription == NULL ) )
     {
         ret = SDP_CONTROLLER_RESULT_BAD_PARAMETER;
     }
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        memset( pOffer, 0, sizeof( SdpControllerSdpDescription_t ) );
+        memset( pSdpDescription, 0, sizeof( SdpControllerSdpDescription_t ) );
 
-        sdpResult = SdpDeserializer_Init( &ctx, pSdpOfferContent, sdpOfferContentLength );
+        sdpResult = SdpDeserializer_Init( &ctx, pSdpContent, sdpContentLength );
         if( sdpResult != SDP_RESULT_OK )
         {
             LogError( ( "Init SDP deserializer failure, result: %d", sdpResult ) );
@@ -2384,32 +2384,91 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        while( sdpResult == SDP_RESULT_OK )
-        {
-            sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
+        sdpResult = SdpDeserializer_GetNext( &ctx, &type, &pValue, &valueLength );
 
-            if( sdpResult != SDP_RESULT_OK )
+        if( sdpResult != SDP_RESULT_OK )
+        {
+            break;
+        }
+        else if( type == SDP_TYPE_MEDIA )
+        {
+            pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].pMediaName = pValue;
+            pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount ].mediaNameLength = valueLength;
+            pSdpDescription->mediaCount++;
+        }
+        else if( pSdpDescription->mediaCount != 0 )
+        {
+            if( type == SDP_TYPE_ATTRIBUTE )
             {
-                break;
+                ret = ParseMediaAttributes( pSdpDescription, pValue, valueLength );
+                if( ret != SDP_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "parseMediaAttributes fail, result %d", ret ) );
+                    break;
+                }
+            }
+            else if( type == SDP_TYPE_SESSION_INFO )
+            {
+                // Media Title
+                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].pMediaTitle = pValue;
+                pSdpDescription->mediaDescriptions[ pSdpDescription->mediaCount - 1 ].mediaTitleLength = valueLength;
+            }
+            else
+            {
+                /* Do nothing. */
+            }
+        }
+        else
+        {
+            /* No media description before, these attributes belongs to session. */
+            if( type == SDP_TYPE_SESSION_NAME )
+            {
+                // SDP Session Name
+                pSdpDescription->pSessionName = pValue;
+                pSdpDescription->sessionNameLength = valueLength;
+            }
+            else if( type == SDP_TYPE_SESSION_INFO )
+            {
+                // SDP Session Information
+                pSdpDescription->pSessionInformation = pValue;
+                pSdpDescription->sessionInformationLength = valueLength;
+            }
+            else if( type == SDP_TYPE_URI )
+            {
+                // SDP URI
+                pSdpDescription->pUri = pValue;
+                pSdpDescription->uriLength = valueLength;
+            }
+            else if( type == SDP_TYPE_EMAIL )
+            {
+                // SDP Email Address
+                pSdpDescription->pEmailAddress = pValue;
+                pSdpDescription->emailAddressLength = valueLength;
             }
             else if( type == SDP_TYPE_MEDIA )
             {
-                pOffer->mediaDescriptions[ pOffer->mediaCount ].pMediaName = pValue;
-                pOffer->mediaDescriptions[ pOffer->mediaCount ].mediaNameLength = valueLength;
-                pOffer->mediaCount++;
+                // SDP Phone number
+                pSdpDescription->pPhoneNumber = pValue;
+                pSdpDescription->phoneNumberLength = valueLength;
             }
             else if( pOffer->mediaCount != 0 )
             {
-                if( type == SDP_TYPE_ATTRIBUTE )
+                // Version
+                stringResult = StringUtils_ConvertStringToUl( pValue, valueLength, &pSdpDescription->version );
+                if( stringResult != STRING_UTILS_RESULT_OK )
                 {
-                    ret = parseMediaAttributes( pOffer, pValue, valueLength );
-                    if( ret != SDP_CONTROLLER_RESULT_OK )
-                    {
-                        LogError( ( "parseMediaAttributes fail, result %d", ret ) );
-                        break;
-                    }
+                    LogError( ( "StringUtils_ConvertStringToUl fail, result %d, converting %.*s to %lu",
+                                stringResult,
+                                ( int ) valueLength, pValue,
+                                pSdpDescription->version ) );
+                    ret = SDP_CONTROLLER_RESULT_SDP_INVALID_VERSION;
+                    break;
                 }
-                else if( type == SDP_TYPE_SESSION_INFO )
+            }
+            else if( type == SDP_TYPE_ATTRIBUTE )
+            {
+                ret = ParseSessionAttributes( pSdpDescription, pValue, valueLength );
+                if( ret != SDP_CONTROLLER_RESULT_OK )
                 {
                     // Media Title
                     pOffer->mediaDescriptions[ pOffer->mediaCount - 1 ].pMediaTitle = pValue;
@@ -2486,19 +2545,19 @@ SdpControllerResult_t SdpController_DeserializeSdpOffer( const char * pSdpOfferC
 
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
-        if( pOffer->quickAccess.pFingerprint == NULL )
+        if( pSdpDescription->quickAccess.pFingerprint == NULL )
         {
             /* fingerprint is mandatory in the SDP. */
             LogError( ( "No fingerprint found in the SDP content." ) );
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_NO_FINGERPRINT_FOUND;
         }
-        else if( pOffer->quickAccess.pIceUfrag == NULL )
+        else if( pSdpDescription->quickAccess.pIceUfrag == NULL )
         {
             /* ice-ufrag is mandatory in the SDP. */
             LogError( ( "No ice-ufrag found in the SDP content." ) );
             ret = SDP_CONTROLLER_RESULT_SDP_FAIL_NO_ICE_UFRAG_FOUND;
         }
-        else if( pOffer->quickAccess.pIcePwd == NULL )
+        else if( pSdpDescription->quickAccess.pIcePwd == NULL )
         {
             /* ice-pwd is mandatory in the SDP. */
             LogError( ( "No ice-pwd found in the SDP content." ) );
@@ -2557,10 +2616,10 @@ SdpControllerResult_t SdpController_SerializeSdpMessageByDescription( SdpControl
     if( ret == SDP_CONTROLLER_RESULT_OK )
     {
         remainSize = *pOutputSerializedSdpMessageLength - outputBufferWrittenSize;
-        ret = serializeSdpMessage( pSdpDescription, pCurrentOutput, &remainSize );
+        ret = SerializeSdpMessage( pSdpDescription, pCurrentOutput, &remainSize );
         if( ret == SDP_CONTROLLER_RESULT_OK )
         {
-            /* remainSize is updated to written length in serializeSdpMessage. */
+            /* remainSize is updated to written length in SerializeSdpMessage. */
             pCurrentOutput += remainSize;
             outputBufferWrittenSize += remainSize;
         }

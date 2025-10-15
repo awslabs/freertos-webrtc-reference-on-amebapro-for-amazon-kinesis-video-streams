@@ -874,14 +874,78 @@ static IceControllerResult_t SendBindingResponse( IceControllerContext_t * pCtx,
             pDestEndpoint = &pCandidatePair->pRemoteCandidate->endpoint;
         }
 
-        if( IceControllerNet_SendPacket( pCtx, pSocketContext, pDestEndpoint, sentStunBuffer, sentStunBufferLength ) != ICE_CONTROLLER_RESULT_OK )
+        ret = IceControllerNet_SendPacket( pCtx, pSocketContext, pDestEndpoint, sentStunBuffer, sentStunBufferLength );
+        if( ret != ICE_CONTROLLER_RESULT_OK )
         {
-            LogWarn( ( "Unable to send STUN response for nomination" ) );
+            LogWarn( ( "Unable to send STUN response, result: %d", ret ) );
             ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
         }
         else
         {
             LogDebug( ( "Sending STUN bind response back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
+                        pCandidatePair->pLocalCandidate->candidateId,
+                        pCandidatePair->pRemoteCandidate->candidateId ) );
+        }
+    }
+
+    return ret;
+}
+
+static IceControllerResult_t SendNominationRequest( IceControllerContext_t * pCtx,
+                                                    IceControllerSocketContext_t * pSocketContext,
+                                                    IceCandidatePair_t * pCandidatePair,
+                                                    uint8_t * pTransactionIdBuffer )
+{
+    IceControllerResult_t ret = ICE_CONTROLLER_RESULT_OK;
+    IceResult_t iceResult;
+    uint8_t sentStunBuffer[ ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE ];
+    size_t sentStunBufferLength = ICE_CONTROLLER_STUN_MESSAGE_BUFFER_SIZE;
+    IceEndpoint_t * pDestEndpoint = NULL;
+    uint64_t currentTimeSeconds = NetworkingUtils_GetCurrentTimeSec( NULL );
+
+    if( xSemaphoreTake( pCtx->iceMutex, portMAX_DELAY ) == pdTRUE )
+    {
+        iceResult = Ice_CreateNextPairRequest( &pCtx->iceContext,
+                                               pCandidatePair,
+                                               currentTimeSeconds,
+                                               sentStunBuffer,
+                                               &sentStunBufferLength );
+        xSemaphoreGive( pCtx->iceMutex );
+
+        if( iceResult != ICE_RESULT_OK )
+        {
+            LogWarn( ( "Unable to create STUN binding response, result: %d", iceResult ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_BIND_RESPONSE;
+        }
+    }
+    else
+    {
+        LogError( ( "Failed to create binding response: mutex lock acquisition." ) );
+        ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
+    }
+
+    if( ret == ICE_CONTROLLER_RESULT_OK )
+    {
+        IceControllerNet_LogStunPacket( sentStunBuffer, sentStunBufferLength );
+
+        if( pSocketContext->pLocalCandidate->candidateType == ICE_CANDIDATE_TYPE_RELAY )
+        {
+            pDestEndpoint = &( pSocketContext->pIceServer->iceEndpoint );
+        }
+        else
+        {
+            pDestEndpoint = &pCandidatePair->pRemoteCandidate->endpoint;
+        }
+
+        ret = IceControllerNet_SendPacket( pCtx, pSocketContext, pDestEndpoint, sentStunBuffer, sentStunBufferLength );
+        if( ret != ICE_CONTROLLER_RESULT_OK )
+        {
+            LogWarn( ( "Unable to send STUN nomination request, result: %d", ret ) );
+            ret = ICE_CONTROLLER_RESULT_FAIL_SEND_NOMINATION_REQUEST;
+        }
+        else
+        {
+            LogDebug( ( "Sent STUN nomination request back to remote, local/remote candidate ID: 0x%04x / 0x%04x",
                         pCandidatePair->pLocalCandidate->candidateId,
                         pCandidatePair->pRemoteCandidate->candidateId ) );
         }
@@ -924,17 +988,6 @@ static IceControllerResult_t CheckNomination( IceControllerContext_t * pCtx,
             LogVerbose( ( "Candidiate pair is nominated, local IP/port: %s/%u, remote IP/port: %s/%u",
                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pLocalCandidate->endpoint, ipBuffer, sizeof( ipBuffer ) ), pCandidatePair->pLocalCandidate->endpoint.transportAddress.port,
                           IceControllerNet_LogIpAddressInfo( &pCandidatePair->pRemoteCandidate->endpoint, ipBuffer2, sizeof( ipBuffer2 ) ), pCandidatePair->pRemoteCandidate->endpoint.transportAddress.port ) );
-
-            /* Update socket context. */
-            if( xSemaphoreTake( pCtx->socketMutex, portMAX_DELAY ) == pdTRUE )
-            {
-                pCtx->pNominatedSocketContext = pSocketContext;
-                pCtx->pNominatedSocketContext->pRemoteCandidate = pCandidatePair->pRemoteCandidate;
-                pCtx->pNominatedSocketContext->pCandidatePair = pCandidatePair;
-
-                /* We have finished accessing the shared resource.  Release the mutex. */
-                xSemaphoreGive( pCtx->socketMutex );
-            }
 
             ret = ICE_CONTROLLER_RESULT_FOUND_CONNECTION;
         }
@@ -1404,7 +1457,6 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                 }
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_TRIGGERED_CHECK:
-            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_NOMINATION:
             case ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_FOR_REMOTE_REQUEST:
                 ret = SendBindingResponse( pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer );
 
@@ -1481,8 +1533,24 @@ IceControllerResult_t IceControllerNet_HandleStunPacket( IceControllerContext_t 
                     ret = ICE_CONTROLLER_RESULT_FAIL_MUTEX_TAKE;
                 }
                 break;
+            case ICE_HANDLE_STUN_PACKET_RESULT_SEND_RESPONSE_AND_START_NOMINATION:
+                /* In this case, we have to do 2 actions:
+                 * 1. Send binding response back to remote peer.
+                 * 2. Send nomination request for this pair. */
+                ret = SendBindingResponse( pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer );
+                if( ret != ICE_CONTROLLER_RESULT_OK )
+                {
+                    LogError( ( "Failed to send response for STUN binding request, result: %d", ret ) );
+                    break;
+                }
+
+                /* 
+                 * Note: After successfully sending the response, intentionally 
+                 * falls through to the case below to send the nominating request.
+                 */
             case ICE_HANDLE_STUN_PACKET_RESULT_START_NOMINATION:
-                LogInfo( ( "ICE_HANDLE_STUN_PACKET_RESULT_START_NOMINATION" ) );
+                /* Add logic to start nomination flow here. NOTE: Take care of sending binding request part. */
+                ret = SendNominationRequest( pCtx, pSocketContext, pCandidatePair, pTransactionIdBuffer );
                 break;
             case ICE_HANDLE_STUN_PACKET_RESULT_VALID_CANDIDATE_PAIR:
                 LogInfo( ( "A valid candidate pair is found" ) );

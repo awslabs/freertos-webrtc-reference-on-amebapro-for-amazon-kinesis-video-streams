@@ -104,7 +104,7 @@ PeerConnectionResult_t PeerConnectionH265Helper_FillFrameH265( PeerConnectionJit
             h265Packet.pPacketData = pPacket->pPacketBuffer;
             h265Packet.packetDataLength = pPacket->packetBufferLength;
             rtpTimestamp = pPacket->rtpTimestamp;
-            LogDebug( ( "Adding packet seq: %u, length: %lu, timestamp: %u", i, h265Packet.packetDataLength, rtpTimestamp ) );
+            LogDebug( ( "Adding packet seq: %u, length: %u, timestamp: %lu", i, h265Packet.packetDataLength, rtpTimestamp ) );
 
             resultH265 = H265Depacketizer_AddPacket( &h265DepacketizerContext,
                                                      &h265Packet );

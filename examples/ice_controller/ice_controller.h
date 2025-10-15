@@ -34,16 +34,7 @@ IceControllerResult_t IceController_DeserializeIceCandidate( const char * pDecod
                                                              size_t decodeMessageLength,
                                                              IceControllerCandidate_t * pCandidate );
 IceControllerResult_t IceController_Start( IceControllerContext_t * pCtx,
-                                           const char * pLocalUserName,
-                                           size_t localUserNameLength,
-                                           const char * pLocalPassword,
-                                           size_t localPasswordLength,
-                                           const char * pRemoteUserName,
-                                           size_t remoteUserNameLength,
-                                           const char * pRemotePassword,
-                                           size_t remotePasswordLength,
-                                           const char * pCombinedName,
-                                           size_t combinedNameLength );
+                                           IceControllerStartConfig_t * pStartConfig );
 IceControllerResult_t IceController_ProcessLoop( IceControllerContext_t * pCtx );
 IceControllerResult_t IceController_AddRemoteCandidate( IceControllerContext_t * pCtx,
                                                         IceRemoteCandidateInfo_t * pRemoteCandidate );

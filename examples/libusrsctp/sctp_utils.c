@@ -392,7 +392,7 @@ static SctpUtilsResult_t SendOpenDataChannelAck( SctpSession_t * pSctpSession,
         memset( &( pSctpSession->spa ), 0x00, sizeof( struct sctp_sendv_spa ) );
         pSctpSession->spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
         pSctpSession->spa.sendv_sndinfo.snd_sid = channelId;
-        pSctpSession->spa.sendv_sndinfo.snd_ppid = ntohl( SCTP_PPID_DCEP );
+        pSctpSession->spa.sendv_sndinfo.snd_ppid = htonl( SCTP_PPID_DCEP );
 
         if( usrsctp_sendv( pSctpSession->socket,
                            &( pSctpSession->packet[ 0 ] ),
@@ -755,7 +755,7 @@ SctpUtilsResult_t Sctp_SendMessage( SctpSession_t * pSctpSession,
             pSctpSession->spa.sendv_prinfo.pr_value = pDataChannel->maxLifetimeInMilliseconds;
         }
 
-        pSctpSession->spa.sendv_sndinfo.snd_ppid = isBinary ? ntohl( SCTP_PPID_BINARY ) : ntohl( SCTP_PPID_STRING );
+        pSctpSession->spa.sendv_sndinfo.snd_ppid = isBinary ? htonl( SCTP_PPID_BINARY ) : htonl( SCTP_PPID_STRING );
 
         if( usrsctp_sendv( pSctpSession->socket,
                            pMessage,
