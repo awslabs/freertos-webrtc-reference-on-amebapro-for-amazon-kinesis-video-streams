@@ -1306,6 +1306,11 @@ static SignalingControllerResult_t ConnectToSignalingService( SignalingControlle
         #if METRIC_PRINT_ENABLED
         Metric_EndEvent( METRIC_EVENT_SIGNALING_JOIN_STORAGE_SESSION );
         #endif
+
+        if( ret != SIGNALING_CONTROLLER_RESULT_OK )
+        {
+            ( void ) Websocket_Disconnect( &( pCtx->websocketContext ) );
+        }
     }
 
     /* Print metric. */
