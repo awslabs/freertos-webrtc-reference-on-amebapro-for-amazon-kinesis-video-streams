@@ -1628,7 +1628,7 @@ IceControllerResult_t IceController_SendToRemotePeer( IceControllerContext_t * p
                     turnBufferLength = ICE_CONTROLLER_MAX_MTU;
                     iceResult = Ice_CreateTurnChannelDataMessage( &pCtx->iceContext,
                                                                   pCtx->pNominatedSocketContext->pCandidatePair,
-                                                                  turnSendBuffer + ICE_TURN_CHANNEL_DATA_MESSAGE_HEADER_LENGTH,
+                                                                  turnSendBuffer,
                                                                   bufferLength,
                                                                   &turnBufferLength );
                     xSemaphoreGive( pCtx->iceMutex );
