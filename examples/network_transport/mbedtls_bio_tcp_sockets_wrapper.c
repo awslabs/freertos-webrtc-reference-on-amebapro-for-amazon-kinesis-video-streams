@@ -15,16 +15,18 @@
  */
 
 #include "logging.h"
-#include "threading_alt.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ssl.h"
-
+#include "mbedtls/version.h"
 /* TCP Sockets Wrapper include.*/
 #include "tcp_sockets_wrapper.h"
 
 /* MbedTLS Bio TCP sockets wrapper include. */
 #include "mbedtls_bio_tcp_sockets_wrapper.h"
 
+#if !(MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100)
+#include "threading_alt.h"
+#endif
 /**
  * @brief Sends data over TCP socket.
  *

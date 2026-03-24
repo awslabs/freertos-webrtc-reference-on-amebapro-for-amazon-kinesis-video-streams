@@ -24,7 +24,6 @@
 #include "mbedtls/pem.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/ssl.h"
-#include "mbedtls/version.h"
 
 #ifdef MBEDTLS_PSA_CRYPTO_C
 /* MbedTLS PSA Includes */
@@ -265,7 +264,28 @@ static void DtlsSslContextFree( DtlsSSLContext_t * pSslContext )
     mbedtls_ctr_drbg_free( &( pSslContext->ctrDrbgContext ) );
 }
 /*-----------------------------------------------------------*/
+#if (MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100)
+int dtlsSessionKeyDerivationCallback( void * customData,
+                                       mbedtls_ssl_key_export_type type,
+                                       const unsigned char * pMasterSecret,
+                                       size_t secret_len,
+                                       const unsigned char clientRandom[MAX_DTLS_RANDOM_BYTES_LEN],
+                                       const unsigned char serverRandom[MAX_DTLS_RANDOM_BYTES_LEN],
+                                       mbedtls_tls_prf_types tlsProfile )
+{
+    ( void ) type;
+    ( void ) secret_len;
+    DtlsSSLContext_t * pSslContext = ( DtlsSSLContext_t * )customData;
+    TlsKeys * pKeys = ( TlsKeys * ) &pSslContext->tlsKeys;
 
+    memcpy( pKeys->masterSecret, pMasterSecret, sizeof( pKeys->masterSecret ) );
+    memcpy( pKeys->randBytes, clientRandom, MAX_DTLS_RANDOM_BYTES_LEN );
+    memcpy( pKeys->randBytes + MAX_DTLS_RANDOM_BYTES_LEN, serverRandom, MAX_DTLS_RANDOM_BYTES_LEN );
+    pKeys->tlsProfile = tlsProfile;
+
+    return 0;
+}
+#else
 int dtlsSessionKeyDerivationCallback( void * customData,
                                       const unsigned char * pMasterSecret,
                                       const unsigned char * pKeyBlock,
@@ -296,7 +316,7 @@ int dtlsSessionKeyDerivationCallback( void * customData,
 
     return 0;
 }
-
+#endif
 /*-----------------------------------------------------------*/
 static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
                                DtlsNetworkCredentials_t * pNetworkCredentials )
@@ -340,9 +360,14 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
 
             if( mbedtlsError == 0 )
             {
+#if (MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100)
+                mbedtlsError = mbedtls_ssl_conf_dtls_srtp_protection_profiles( &pSslContext->config,
+                                                                            DTLS_SRTP_SUPPORTED_PROFILES );
+#else
                 mbedtlsError = mbedtls_ssl_conf_dtls_srtp_protection_profiles( &pSslContext->config,
                                                                                DTLS_SRTP_SUPPORTED_PROFILES,
                                                                                ARRAY_SIZE( DTLS_SRTP_SUPPORTED_PROFILES ) );
+#endif
                 if( mbedtlsError != 0 )
                 {
                     LogError( ( "mbedtls_ssl_conf_dtls_srtp_protection_profiles failed" ) );
@@ -351,9 +376,15 @@ static int32_t setCredentials( DtlsSSLContext_t * pSslContext,
             }
             if( mbedtlsError == 0 )
             {
+#if (MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100)
+                mbedtls_ssl_set_export_keys_cb( &pSslContext->context,
+                                                 (mbedtls_ssl_export_keys_t *)dtlsSessionKeyDerivationCallback,
+                                                 pSslContext );
+#else
                 mbedtls_ssl_conf_export_keys_ext_cb( &pSslContext->config,
                                                      dtlsSessionKeyDerivationCallback,
                                                      pSslContext );
+#endif
             }
         }
         else

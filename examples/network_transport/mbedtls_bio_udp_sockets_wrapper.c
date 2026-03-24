@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-#include "threading_alt.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ssl.h"
-
+#include "mbedtls/version.h"
 /* UDP Sockets Wrapper include.*/
 #include "udp_sockets_wrapper.h"
 
 /* MbedTLS Bio UDP sockets wrapper include. */
 #include "mbedtls_bio_udp_sockets_wrapper.h"
 
+#if !(MBEDTLS_VERSION_NUMBER == 0x03000000 || MBEDTLS_VERSION_NUMBER == 0x03020100)
+#include "threading_alt.h"
+#endif
 /**
  * @brief Sends data over UDP socket.
  *

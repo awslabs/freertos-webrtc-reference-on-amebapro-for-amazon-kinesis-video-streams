@@ -726,7 +726,7 @@ list(
 	CONFIG_PLATFORM_8735B
 	CONFIG_RTL8735B_PLATFORM=1
 	CONFIG_SYSTEM_TIME64=1
-	MBEDTLS_CONFIG_FILE="mbedtls_config.h"
+	MBEDTLS_CONFIG_FILE="mbedtls_webrtc_config.h"
 )
 
 if (BUILD_NEWAEC)
@@ -760,7 +760,7 @@ target_compile_definitions(outsrc PRIVATE ${app_flags})
 list(
 	APPEND app_inc_path
 
-	${repo_root}/configs/mbedtls
+	${repo_root}/configs/mbedtls/${mbedtls}
 	
 	${inc_path}
 	${sdk_root}/component/os/freertos/${freertos}/Source/portable/GCC/ARM_CM33/non_secure
