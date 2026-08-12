@@ -46,6 +46,31 @@ void AppMediaSourcePort_Stop( void );
 void AppMediaSourcePort_Destroy( void );
 void AppMediaSourcePort_PlayAudioFrame( MediaFrame_t * pFrame );
 
+/* Return code shared by the ISP helpers below, meaning the video pipeline is
+ * not up yet. Callers should retry rather than treat it as a failure: the ISP
+ * is unavailable for a few seconds after boot. */
+#define APP_MEDIA_SOURCE_PORT_NOT_READY  ( -2 )
+
+/**
+ * @brief Reports whether echo cancellation is actually running, and how well.
+ *
+ * The engine initialises lazily on the first audio frame and its init path
+ * reports no status, so "configured" and "running" are not the same thing --
+ * a state buffer that failed to allocate leaves AEC silently dead. This is the
+ * only way to tell the two apart.
+ *
+ * @param[out] pRunning 1 if the canceller is active. May be NULL.
+ * @param[out] pErleDb  Echo return loss enhancement in dB: how much echo is
+ *                      being removed. Higher is better; near zero while
+ *                      running means it is not converging. Meaningful only
+ *                      during far-end speech. May be NULL.
+ *
+ * @return 0 on success, APP_MEDIA_SOURCE_PORT_NOT_READY before audio is up,
+ *         -1 if AEC is not compiled in.
+ */
+int32_t AppMediaSourcePort_GetAecStatus( uint8_t * pRunning,
+                                         int16_t * pErleDb );
+
 #ifdef __cplusplus
 }
 #endif

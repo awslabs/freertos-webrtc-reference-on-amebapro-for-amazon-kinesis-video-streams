@@ -50,6 +50,61 @@ extern int max_skb_buf_num;
 #define MEDIA_PORT_SKB_BUFFER_THRESHOLD ( 64 )
 #define MEDIA_PORT_WEBRTC_AUDIO_FRAME_SIZE ( 256 )
 
+/*-----------------------------------------------------------*/
+/* Acoustic echo cancellation                                */
+/*-----------------------------------------------------------*/
+
+/* Only meaningful with two-way audio: without playback there is no echo to
+ * cancel. The CTAEC engine is compiled in whenever CONFIG_NEWAEC is set (it is,
+ * in application.cmake) and libctaec is linked, but the SDK ships AEC_EN = 0 --
+ * so unless something switches it on, a device with a speaker sends the remote
+ * party's own voice straight back to them. */
+#ifndef MEDIA_PORT_ENABLE_AEC
+#define MEDIA_PORT_ENABLE_AEC   MEDIA_PORT_ENABLE_AUDIO_RECV
+#endif
+
+/* Longest echo path the canceller models. Only 64 or 128 are accepted
+ * (aec_api.h:19) -- not a free-form millisecond value.
+ *
+ * Keep at 64. Raising it to 128 made echo dramatically WORSE on this hardware,
+ * back to roughly the no-AEC level -- a cliff rather than a gradual change,
+ * which points at the canceller failing outright rather than mistuning. The
+ * likely mechanism: VQE_SND_GetStateMemorySize() scales the state buffer with
+ * ECTail, VQE_SND_init() reports no status, and module_audio.c:612 sets
+ * inited_rxasp = 1 regardless -- so a failed allocation leaves AEC dead but
+ * flagged as initialised. Do not raise this without a way to confirm the
+ * engine actually came up. */
+#ifndef MEDIA_PORT_AEC_ECHO_TAIL_MS
+#define MEDIA_PORT_AEC_ECHO_TAIL_MS  ( 64 )
+#endif
+
+/* Residual-echo post-filter suppression, 1..18 (vqe_api.h:54). The SDK
+ * reference value is 6, which measured well here.
+ *
+ * Note this also feeds VQE_SND_GetStateMemorySize(), so it shares the failure
+ * mode described above -- change it on its own, never together with the tail
+ * length. */
+#ifndef MEDIA_PORT_AEC_PP_LEVEL
+#define MEDIA_PORT_AEC_PP_LEVEL  ( 6 )
+#endif
+
+/* Noise suppression on the microphone. Worth having outdoors. */
+#ifndef MEDIA_PORT_ENABLE_NS
+#define MEDIA_PORT_ENABLE_NS  ( 1 )
+#endif
+
+#ifndef MEDIA_PORT_NS_LEVEL
+#define MEDIA_PORT_NS_LEVEL  ( 5 )
+#endif
+
+/* Automatic gain control on the microphone. Off by default: it levels out
+ * visitors standing at different distances, but it also pumps the noise floor
+ * up between words and can fight the echo canceller. Enable only after AEC is
+ * confirmed working. */
+#ifndef MEDIA_PORT_ENABLE_AGC
+#define MEDIA_PORT_ENABLE_AGC  ( 0 )
+#endif
+
 #define VIDEO_QCIF  0
 #define VIDEO_CIF   1
 #define VIDEO_WVGA  2
@@ -140,6 +195,54 @@ static audio_params_t audioParams = {
     .enable_record = 0
 };
 #endif
+
+#if MEDIA_PORT_ENABLE_AEC
+#if !( defined( CONFIG_NEWAEC ) && CONFIG_NEWAEC )
+#error "MEDIA_PORT_ENABLE_AEC needs CONFIG_NEWAEC (the CTAEC engine, 8735 only)."
+#endif
+
+/*
+ * Microphone-path signal processing. Despite the name, rxcfg is the capture
+ * chain -- module_audio.c logs these as "MIC AEC level" -- which is where echo
+ * cancellation belongs: it subtracts the speaker output from what the mic
+ * hears, before that audio is encoded and sent to the remote party. TX_cfg_t
+ * has no aec_cfg at all, for the same reason.
+ *
+ * Values follow the SDK reference config in audio_test_tool/audio_tool_command.c,
+ * changing only the enable flags -- the reference ships everything disabled.
+ */
+static RX_cfg_t audioRxAspParams = {
+    .aec_cfg = {
+        .AEC_EN          = 1,
+        .EchoTailLen     = MEDIA_PORT_AEC_ECHO_TAIL_MS,
+        .CNGEnable       = 1,   /* Comfort noise: silence sounds broken otherwise. */
+        .PPLevel         = MEDIA_PORT_AEC_PP_LEVEL,
+        .DTControl       = 1,   /* Double-talk handling, so both ends can speak. */
+        .ConvergenceTime = 100,
+    },
+    .agc_cfg = {
+        .AGC_EN                = MEDIA_PORT_ENABLE_AGC,
+        .AGCMode               = CT_ALC,
+        .ReferenceLvl          = 6,
+        .RatioFormat           = 1,
+        .AttackTime            = 20,
+        .ReleaseTime           = 20,
+        .Ratio                 = { 50 * 256, 50 * 256, 50 * 256 },
+        .Threshold             = { 20, 30, 50 },
+        .KneeWidth             = 0,
+        .NoiseFloorAdaptEnable = 1,
+        .RMSDetectorEnable     = 0,
+        .MaxGainLimit          = 30,
+    },
+    .ns_cfg = {
+        .NS_EN             = MEDIA_PORT_ENABLE_NS,
+        .NSLevel           = MEDIA_PORT_NS_LEVEL,
+        .HPFEnable         = 0,
+        .NSSlowConvergence = 200,
+    },
+    .post_mute = 0,
+};
+#endif /* MEDIA_PORT_ENABLE_AEC */
 
 #if ( AUDIO_G711_MULAW || AUDIO_G711_ALAW )
 static g711_params_t g711eParams = {
@@ -499,6 +602,22 @@ int32_t AppMediaSourcePort_Init( void )
                             CMD_AUDIO_SET_PARAMS,
                             ( int )&audioParams );
             #endif
+
+            #if MEDIA_PORT_ENABLE_AEC
+            /* Must precede CMD_AUDIO_APPLY: the engine is initialised lazily on
+             * the first frame once AEC_EN is set, so the config has to be in
+             * place before audio starts flowing. */
+            mm_module_ctrl( pAudioContext,
+                            CMD_AUDIO_SET_RXASP_PARAM,
+                            ( int )&audioRxAspParams );
+
+            LogInfo( ( "[Media Port] Mic AEC on (tail %d ms, pp %d), NS %s, AGC %s.",
+                       MEDIA_PORT_AEC_ECHO_TAIL_MS,
+                       MEDIA_PORT_AEC_PP_LEVEL,
+                       MEDIA_PORT_ENABLE_NS ? "on" : "off",
+                       MEDIA_PORT_ENABLE_AGC ? "on" : "off" ) );
+            #endif /* MEDIA_PORT_ENABLE_AEC */
+
             mm_module_ctrl( pAudioContext,
                             MM_CMD_SET_QUEUE_LEN,
                             6 );
@@ -846,3 +965,43 @@ void AppMediaSourcePort_PlayAudioFrame( MediaFrame_t * pFrame )
         }
     }
 }
+
+/*-----------------------------------------------------------*/
+
+int32_t AppMediaSourcePort_GetAecStatus( uint8_t * pRunning,
+                                         int16_t * pErleDb )
+{
+    #if MEDIA_PORT_ENABLE_AEC
+        uint8_t running = 0;
+        VQE_SND_STATE_t sndState;
+
+        if( pAudioContext == NULL )
+        {
+            return APP_MEDIA_SOURCE_PORT_NOT_READY;
+        }
+
+        /* Goes through the module rather than reading VQE directly, because the
+         * module also checks inited_rxasp/run_rxasp -- the engine can report
+         * itself running while the module has it gated off. */
+        mm_module_ctrl( pAudioContext, CMD_AUDIO_GET_AEC_RUN, ( int )&running );
+
+        if( pRunning != NULL )
+        {
+            *pRunning = running;
+        }
+
+        if( pErleDb != NULL )
+        {
+            memset( &sndState, 0, sizeof( sndState ) );
+            VQE_SND_get_status( &sndState );
+            *pErleDb = sndState.ERLE;
+        }
+
+        return 0;
+    #else /* MEDIA_PORT_ENABLE_AEC */
+        ( void ) pRunning;
+        ( void ) pErleDb;
+        return -1;
+    #endif /* MEDIA_PORT_ENABLE_AEC */
+}
+
