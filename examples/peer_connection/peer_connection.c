@@ -1773,6 +1773,26 @@ PeerConnectionResult_t PeerConnection_SetRemoteDescription( PeerConnectionSessio
                     pBufferSessionDescription->pSdpBuffer, pBufferSessionDescription->sdpBufferLength ) );
         ret = PEER_CONNECTION_RESULT_BAD_PARAMETER;
     }
+    else if( pSession->state != PEER_CONNECTION_SESSION_STATE_START )
+    {
+        /* A remote description may only be applied to a session that has been
+         * started and has not yet begun negotiating. PeerConnection_Start() is
+         * what moves a session into START.
+         *
+         * This guard exists because the function is destructive: further down
+         * it calls InitDtlsSession(), which re-runs mbedtls_ssl_setup() and
+         * mbedtls_entropy_init() over contexts that are still in use on a live
+         * session. Combined with the receive task tearing the same session
+         * down, that produced a heap double free (configASSERT in vPortFree).
+         *
+         * The trigger is a duplicate SDP offer: a viewer that re-offers before
+         * its previous session has closed. Rejecting is safe -- the caller is
+         * expected to close the existing session and retry on a fresh one. */
+        LogWarn( ( "Ignoring remote description for session in state %d; expected START (%d). "
+                   "Close the session before re-applying an offer.",
+                   pSession->state, PEER_CONNECTION_SESSION_STATE_START ) );
+        ret = PEER_CONNECTION_RESULT_INVALID_SESSION_STATE;
+    }
     else
     {
         /* Empty else marker. */

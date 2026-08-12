@@ -167,6 +167,10 @@ typedef enum PeerConnectionResult
     PEER_CONNECTION_RESULT_FAIL_SCTP_WRITE,
     PEER_CONNECTION_RESULT_FAIL_SCTP_READ,
     PEER_CONNECTION_RESULT_FAIL_SCTP_CLOSE,
+    /* The operation is not valid for the session's current state -- for example
+     * applying a remote description to a session that is already negotiating or
+     * connected. */
+    PEER_CONNECTION_RESULT_INVALID_SESSION_STATE,
 } PeerConnectionResult_t;
 
 /*
